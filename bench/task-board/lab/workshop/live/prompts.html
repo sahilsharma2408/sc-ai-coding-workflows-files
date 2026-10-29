@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seven Setups Run Sheet</title>
+<style>
+/* Layout: one narrow reading column; a prep strip, then one panel per setup, each with its command and prompt ready to copy. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1b1f27; --muted: #5d6573; --line: #dfe3ea;
+  --code-bg: #eef1f5; --accent: #2f5bd3; --cloud: #2f5bd3; --hybrid: #8a5a00; --local: #1f7a4d; --warn: #9a3412;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151b; --panel: #1a1e26; --fg: #e6e9ef; --muted: #9aa3b2; --line: #2b313c;
+  --code-bg: #232833; --accent: #8fb0ff; --cloud: #8fb0ff; --hybrid: #f0b34a; --local: #5fd39a; --warn: #fb923c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1e26; --fg: #e6e9ef; --muted: #9aa3b2; --line: #2b313c;
+  --code-bg: #232833; --accent: #8fb0ff; --cloud: #8fb0ff; --hybrid: #f0b34a; --local: #5fd39a; --warn: #fb923c; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-size: 1.75rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
+h2 { font-size: 1.05rem; margin: 0; }
+.label { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+button { font: 600 .8rem var(--sans); color: var(--accent); background: transparent; border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.prep, .setup { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.prep ol { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.prep li { min-width: 0; }
+.block { display: grid; gap: 6px; min-width: 0; }
+.block-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+pre { margin: 0; background: var(--code-bg); border-radius: 6px; padding: 10px 12px; font: .82rem/1.5 var(--mono);
+  white-space: pre-wrap; word-break: break-word; overflow-x: auto; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: 1px 4px; border-radius: 4px; }
+.setup-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.num { font: 700 1.05rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.chip { font-size: .72rem; font-weight: 600; border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; }
+.chip.cloud { color: var(--cloud); } .chip.hybrid { color: var(--hybrid); } .chip.local { color: var(--local); } .chip.tool { color: var(--muted); }
+.meta { color: var(--muted); font-size: .88rem; margin: 0; }
+.meta b { color: var(--fg); font-weight: 600; }
+.note { border-left: 3px solid var(--warn); padding: 2px 0 2px 10px; color: var(--fg); font-size: .9rem; margin: 0; }
+.notes { display: grid; gap: 8px; margin: 0; padding-left: 1.2em; color: var(--muted); font-size: .92rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Seven setups, one mission</h1>
+      <p class="lede">The launch command and prompt for each setup in the live demo. Every setup works on the labels feature in its own folder, and when the mission is done it starts the app and scores itself with the benchmark scorer.</p>
+    </div>
+    <button id="copy-all" type="button">Copy all as Markdown</button>
+  </header>
+
+  <section class="prep" aria-labelledby="prep-title">
+    <h2 id="prep-title">Before you start</h2>
+    <ol>
+      <li><span>Make the seven mission folders. They sit outside the repo, so the agents cannot see the hidden tests or the reference solution. Skip this if <code>~/task-board-live</code> already exists.</span>
+        <div class="block"><div class="block-head"><span class="label">Run once, from the repo root</span><button type="button" data-copy="prep-folders">Copy</button></div>
+        <pre id="prep-folders">cd ~/workspace/sc-ai-coding-workflows-files
+for s in s1 s2 s3 s4 s5 s6 s7; do node bench/task-board/lab/workshop/ladder.mjs start labels-feature --model live-$s --root ~/task-board-live; done</pre></div></li>
+      <li><span>In every terminal you open, set the overlay folder and the OpenRouter key.</span>
+        <div class="block"><div class="block-head"><span class="label">Each terminal</span><button type="button" data-copy="prep-env">Copy</button></div>
+        <pre id="prep-env">L=~/workspace/sc-ai-coding-workflows-files/bench/task-board/lab/workshop/live
+export OPENROUTER_API_KEY=sk-or-...</pre></div></li>
+      <li>Open one terminal per setup, <code>cd</code> into that setup's folder, run its command, then paste its prompt.</li>
+    </ol>
+  </section>
+
+  <div id="setups" style="display:grid;gap:16px"></div>
+
+  <section class="prep" aria-labelledby="notes-title">
+    <h2 id="notes-title">During the demo</h2>
+    <ul class="notes">
+      <li>Each app gets its own address. Vite takes 5173 first, then 5174 and so on. Stop all of them with <code>pkill -f vite</code>.</li>
+      <li>The agent asks before it runs <code>npm install</code> and the dev server. Approve both. In Claude Code you can skip the question by adding <code>--allowedTools "Bash(npm *),Bash(nohup *)"</code>.</li>
+      <li>Setups 5, 6 and 7 share Ollama on this laptop. Run them one at a time, and not while the benchmark is running.</li>
+      <li>Setup 7 took 12 to 21 minutes on the easier tasks in the benchmark. Start it early or show the stored result instead.</li>
+      <li>Each live run scores itself at the end. To compare the live runs side by side, models down and score, cost and time across, run <code>node ~/workspace/sc-ai-coding-workflows-files/bench/task-board/lab/workshop/ladder.mjs table --root ~/task-board-live</code>.</li>
+      <li>Live cost is approximate: Claude Code runs show no cost, and DeepSeek runs share one key, so overlapping runs blur each other's figure. The exact costs are in the benchmark report.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const REPO = '~/workspace/sc-ai-coding-workflows-files';
+const SOLO = `Read MISSION.md in this folder and carry out the mission. Work alone: do not use sub-agents. Follow the rules of the run in MISSION.md.`;
+const lead = (how) => `Read MISSION.md in this folder. You are the orchestrator. Do not edit any file yourself. Plan the work, then hand the edits to at most 3 sub-agents, using ${how}. Give each sub-agent a self-contained task packet: the files it may write, the exact names and signatures it must use, and the behaviour to keep. Do not paste whole files into the packet. When they return, read only the files they changed. If something is wrong, send a correction to a sub-agent instead of fixing it yourself. Follow the rules of the run in MISSION.md.`;
+const RUN_APP = `When the mission is done, and only then, start the app so I can see it. This is the one exception to the rule about not running anything: run \`npm install\`, then start the dev server in the background with \`nohup npm run dev > dev.log 2>&1 &\`, wait about 5 seconds, read dev.log and reply with the local URL it prints.`;
+const AGENTS = `'{"implementer":{"description":"Implements one well-specified work packet and reports back.","prompt":"You are an implementer. Do exactly the work packet you are given. Edit only the files it names. Follow the house rules in README.md. Reply with one line per file you changed.","model":"haiku","tools":["Read","Edit","Write","Glob","Grep"]}}'`;
+
+const SETUPS = [
+  { n: 1, name: 'Sonnet alone', main: 'Sonnet', sub: null, where: 'cloud', tool: 'Claude Code',
+    cmd: 'claude --model sonnet --permission-mode acceptEdits', prompt: SOLO },
+  { n: 2, name: 'Sonnet leads, Haiku implements', main: 'Sonnet', sub: 'Haiku', where: 'cloud', tool: 'Claude Code',
+    cmd: `claude --model sonnet --permission-mode acceptEdits --agents ${AGENTS}`,
+    prompt: lead('the `implementer` sub-agent (the Agent tool, subagent_type implementer)') },
+  { n: 3, name: 'DeepSeek V4 Pro alone', main: 'V4 Pro', sub: null, where: 'cloud', tool: 'DeepSeek harness',
+    cmd: 'npx @deepseek-ai/dsh tui --patch $L/s3-deepseek-pro.yml', prompt: SOLO },
+  { n: 4, name: 'V4 Pro leads, V4 Flash implements', main: 'V4 Pro', sub: 'V4 Flash', where: 'cloud', tool: 'DeepSeek harness',
+    cmd: 'npx @deepseek-ai/dsh tui --patch $L/s4-pro-flash.yml', prompt: lead('the subagent tool') },
+  { n: 5, name: 'V4 Flash leads, local Gemma 4 implements', main: 'V4 Flash', sub: 'Gemma 4 (local)', where: 'hybrid', tool: 'DeepSeek harness',
+    cmd: 'LOCAL_API_KEY=local npx @deepseek-ai/dsh tui --patch $L/s5-flash-gemma.yml', prompt: lead('the subagent tool') },
+  { n: 6, name: 'Qwen 3.5 alone, fully local', main: 'Qwen 3.5 (local)', sub: null, where: 'local', tool: 'DeepSeek harness',
+    cmd: 'LOCAL_API_KEY=local npx @deepseek-ai/dsh tui --patch $L/s6-qwen.yml', prompt: SOLO },
+  { n: 7, name: 'Qwen 3.5 leads, Gemma 4 implements', main: 'Qwen 3.5 (local)', sub: 'Gemma 4 (local)', where: 'local', tool: 'DeepSeek harness',
+    cmd: 'LOCAL_API_KEY=local npx @deepseek-ai/dsh tui --patch $L/s7-qwen-gemma.yml', prompt: lead('the subagent tool') },
+];
+const WHERE = { cloud: 'Cloud', hybrid: 'Cloud + local', local: 'Fully local' };
+const folder = (n) => `~/task-board-live/labels-feature__live-s${n}`;
+const fresh = (n) => `node ${REPO}/bench/task-board/lab/workshop/ladder.mjs start labels-feature --model live-s${n} --root ~/task-board-live --again`;
+const SCORE = (n) => `Then score the run with the benchmark scorer: run \`node ${REPO}/bench/task-board/lab/workshop/ladder.mjs finish labels-feature --model live-s${n} --root ~/task-board-live\` (it takes about a minute). Do not change any file after scoring, even if tests fail. End your reply with the score report exactly as the command prints it (the parts, the TOTAL, the failing tests and the Time, Cost and Score line), followed by the local URL of the app.`;
+const fullPrompt = (s) => `${s.prompt}\n${RUN_APP}\n${SCORE(s.n)}`;
+
+const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const host = document.getElementById('setups');
+host.innerHTML = SETUPS.map((s) => `
+  <section class="setup" aria-labelledby="s${s.n}-title">
+    <div class="setup-head">
+      <span class="num">${s.n}</span><h2 id="s${s.n}-title">${esc(s.name)}</h2>
+      <span class="chips"><span class="chip ${s.where}">${WHERE[s.where]}</span><span class="chip tool">${s.tool}</span></span>
+    </div>
+    <p class="meta">Main: <b>${esc(s.main)}</b> · Sub-agent: <b>${s.sub ? esc(s.sub) : 'none, works alone'}</b></p>
+    <div class="block"><div class="block-head"><span class="label">1 · Reset the folder, start the clock, launch</span><button type="button" data-copy="s${s.n}-cmd">Copy</button></div>
+      <pre id="s${s.n}-cmd">${esc(fresh(s.n))}\ncd ${folder(s.n)} &amp;&amp; ls MISSION.md\n${esc(s.cmd)}</pre></div>
+    <div class="block"><div class="block-head"><span class="label">2 · Paste this prompt</span><button type="button" data-copy="s${s.n}-prompt">Copy</button></div>
+      <pre id="s${s.n}-prompt">${esc(fullPrompt(s))}</pre></div>
+  </section>`).join('');
+
+async function copyText(text, btn) {
+  const done = (label) => { const old = btn.textContent; btn.textContent = label; setTimeout(() => (btn.textContent = old), 1400); };
+  try { await navigator.clipboard.writeText(text); done('Copied'); }
+  catch { done('Select and copy'); }
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-copy]');
+  if (btn) {
+    const el = document.getElementById(btn.dataset.copy);
+    copyText(el.textContent, btn);
+    const range = document.createRange(); range.selectNodeContents(el);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  }
+});
+document.getElementById('copy-all').addEventListener('click', (e) => {
+  const fence = '```';
+  const md = ['# Seven setups, one mission', '',
+    '## Before you start', '', `${fence}bash`, document.getElementById('prep-folders').textContent, document.getElementById('prep-env').textContent, fence, '',
+    ...SETUPS.flatMap((s) => [`## ${s.n}. ${s.name}`, '', `Main: ${s.main} · Sub-agent: ${s.sub ?? 'none, works alone'}`, '',
+      `${fence}bash`, fresh(s.n), `cd ${folder(s.n)} && ls MISSION.md`, s.cmd, fence, '', `${fence}text`, fullPrompt(s), fence, ''])].join('\n');
+  copyText(md, e.currentTarget);
+});
+</script>
+</body>
+</html>

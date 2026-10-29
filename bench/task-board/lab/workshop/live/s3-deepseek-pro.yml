@@ -1,0 +1,18 @@
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        api: openai-completions
+        baseURL: https://openrouter.ai/api/v1
+        models:
+          - id: deepseek/deepseek-v4-pro
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: deepseek/deepseek-v4-pro
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent
+  disabled: true

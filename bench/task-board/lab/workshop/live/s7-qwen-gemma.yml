@@ -1,0 +1,26 @@
+- id: llm-pi-ai
+  config:
+    providers:
+      local:
+        displayName: Local model
+        apiKeyEnv: LOCAL_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:11434/v1
+        models:
+          - id: qwen3.5:35b-a3b
+            contextWindow: 32768
+          - id: gemma4:12b
+            contextWindow: 32768
+- id: agent-default-model
+  config:
+    provider: local
+    model: qwen3.5:35b-a3b
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent
+  config:
+    provider: spawn
+    toolName: subagent
+    agentOptions:
+      provider: local
+      model: gemma4:12b

@@ -1,0 +1,31 @@
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        api: openai-completions
+        baseURL: https://openrouter.ai/api/v1
+        models:
+          - id: deepseek/deepseek-v4-flash
+      local:
+        displayName: Local model
+        apiKeyEnv: LOCAL_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:11434/v1
+        models:
+          - id: gemma4:12b
+            contextWindow: 32768
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: deepseek/deepseek-v4-flash
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent
+  config:
+    provider: spawn
+    toolName: subagent
+    agentOptions:
+      provider: local
+      model: gemma4:12b
