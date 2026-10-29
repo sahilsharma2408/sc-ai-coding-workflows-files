@@ -110,7 +110,7 @@ async function prepare(task, dir) {
 async function regressionSuite(task) {
   const gen = await hook(task, 'regression.mjs')
   if (!gen) return { include: ['tests/behavior/**/*.spec.{ts,tsx}', 'tests/static/**/*.spec.{ts,tsx}'], setup: undefined }
-  const out = path.join(LAB, '.gen', task.id)
+  const out = path.join(LAB, '.gen', `${task.id}-${process.pid}`) // one folder per scoring process, so parallel scores cannot delete each other's files
   fs.rmSync(out, { recursive: true, force: true })
   fs.cpSync(path.join(BENCH, 'tests'), path.join(out, 'tests'), { recursive: true })
   await gen.generate(path.join(out, 'tests'))
@@ -294,4 +294,4 @@ if (command === 'list') {
 } else {
   console.log('commands: list | prepare <task> <dir> | score <task> <dir> | validate [task...] | matrix <report...> | pivot')
 }
-fs.rmSync(path.join(WORK, '_json'), { recursive: true, force: true })
+try { fs.rmdirSync(path.join(WORK, '_json')) } catch { /* another scoring process is still using it */ }

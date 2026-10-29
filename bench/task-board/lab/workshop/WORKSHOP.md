@@ -26,6 +26,82 @@ Three scored jobs and one review job. Each works on the Task Board app, a small 
 
 Measured time per run on the cloud models: about 2 to 3 minutes for easy, 2 minutes for medium and 8 to 13 for hard. A local model will be slower. In a 90-minute session, give everyone easy and medium, and run hard as a group or on one model only.
 
+## The seven setups (the main benchmark)
+
+One mission, given to seven setups, then one report. The mission is the file [mission.md](mission.md). Every setup receives exactly that text as `MISSION.md` in its own fresh folder. The default mission is `labels-feature`: add labels to tasks across about 20 files, which is big enough for an orchestrator and sub-agents to matter.
+
+| # | Setup | Coding agent | Main model | Sub-agent model |
+|---|---|---|---|---|
+| 1 | Sonnet alone | Claude Code | Sonnet (Anthropic) | none |
+| 2 | Sonnet orchestrates, Haiku implements | Claude Code | Sonnet (Anthropic) | Haiku (Anthropic) |
+| 3 | DeepSeek V4 Pro alone | DeepSeek harness | V4 Pro (OpenRouter) | none |
+| 4 | V4 Pro orchestrates, V4 Flash implements | DeepSeek harness | V4 Pro (OpenRouter) | V4 Flash (OpenRouter) |
+| 5 | V4 Flash orchestrates, Gemma 4 implements | DeepSeek harness | V4 Flash (OpenRouter) | Gemma 4 (local) |
+| 6 | Qwen 3.5 alone | DeepSeek harness | Qwen 3.5 (local) | none |
+| 7 | Qwen 3.5 orchestrates, Gemma 4 implements | DeepSeek harness | Qwen 3.5 (local) | Gemma 4 (local) |
+
+All commands run from `bench/task-board`.
+
+```bash
+node lab/workshop/bench.mjs setups              # list the seven setups
+node lab/workshop/bench.mjs mission             # rewrite mission.md for the current mission
+```
+
+### Run one setup
+
+```bash
+node lab/workshop/bench.mjs run 1               # Sonnet alone
+node lab/workshop/bench.mjs run 2               # Sonnet + Haiku
+node lab/workshop/bench.mjs run 3               # DeepSeek V4 Pro alone
+node lab/workshop/bench.mjs run 4               # V4 Pro + V4 Flash
+node lab/workshop/bench.mjs run 5               # V4 Flash + local Gemma 4
+node lab/workshop/bench.mjs run 6               # local Qwen 3.5 alone
+node lab/workshop/bench.mjs run 7               # local Qwen 3.5 + local Gemma 4
+```
+
+Setups 5, 6 and 7 need a local model server. The names default to `qwen3.5` and `gemma4`, and the tool picks the model the name stands for (so `qwen3.5` finds `qwen3.5:35b-a3b`). Say it yourself if the names differ: `--qwen qwen3.5:35b-a3b --gemma gemma4:e4b`. Add `--base-url` for a server that is not Ollama on its usual port, and `--context` for the context window (default 65536). **Set the server's own context length to the same number**, because an untouched Ollama server uses a much smaller default and cuts the prompt without telling you.
+
+### Run several at the same time
+
+```bash
+node lab/workshop/bench.mjs run-all                          # all seven, one after the other
+node lab/workshop/bench.mjs run-all --parallel               # cloud setups together, local setups one by one beside them
+node lab/workshop/bench.mjs run-all --only 1,2,3,4 --parallel   # just the four cloud setups, all at once
+node lab/workshop/bench.mjs run-all --only 5,6,7             # just the local ones
+```
+
+- **What runs at the same time.** With `--parallel`, setups 1 to 4 start together. Setups 5, 6 and 7 run one after another, beside them, because they share one GPU and its memory. Use `--max-cloud 2` to limit how many cloud setups run at once.
+- **Before it spends anything**, `run-all` checks that every local model exists and that a key is available. If a check fails, nothing starts.
+- **Cost stays correct** when runs overlap, because it comes from each reply's own record, not from the key's total.
+- **Time does not.** Runs that overlap share one laptop, so the local models can be slower while the cloud runs and the scoring are busy. Use `--parallel` to get results quickly, and run one at a time if you want a fair time comparison.
+- **Ask the harness to do it.** You can paste the same commands to a coding agent, for example "run `node lab/workshop/bench.mjs run-all --only 1,2,3,4 --parallel` and tell me when the report is ready". The agent does not need to understand the benchmark. The script does the work.
+
+### What each run records
+
+Every run saves `~/task-board-bench/runs/<mission>__<setup>.json`. The report is built from these files.
+
+| Recorded | What it is |
+|---|---|
+| Score | Out of 100, with the parts (mission, existing behaviour, hygiene) and the failing tests |
+| Time | Wall clock of the agent run |
+| Cost | Exact from OpenRouter for the DeepSeek harness, Claude Code's own figure for Claude, $0 for local models |
+| Turns and tool calls | Model replies, and the reads, searches and edits that followed, split into main agent and sub-agents |
+| Tokens | Input, output and cached, split into main agent and sub-agents, and by model |
+| Sub-agents | How many were started |
+| Rule check | A sub-agent setup that used none, an orchestrator that edited files itself, a "work alone" setup that started sub-agents, more than 3 sub-agents, any shell command, or a run that changed no files |
+
+The DeepSeek harness runs have the shell turned off for every agent, so "do not run anything" is enforced there and not just requested.
+
+### The report
+
+```bash
+node lab/workshop/bench.mjs report --open      # builds ~/task-board-bench/report.html and opens it
+```
+
+The report is one page: a scoreboard of all seven setups, bar charts for score, cost, time and tokens, a short list of what the numbers say (best score, cheapest within 5 points of the best, what adding sub-agents did in each pair), and a detail block per setup. `run-all` builds it for you when it finishes.
+
+Useful options everywhere: `--task <id>` to use a different mission (any task from `ladder.mjs tasks`), `--root <dir>` for another results folder, `--timeout <minutes>` (default 45), `--again` to redo a setup.
+
 ## The mission file
 
 Every run gets a folder with a `MISSION.md` in it. That one file is what you hand to the model. It holds the job, the rules of the run, what "done" means and how the work will be judged. It is filled in from `mission.template.md` in this folder, so you can change the wording there.
@@ -107,7 +183,7 @@ What to know when you run both at once:
 | Cost with two cloud models | Do not run two cloud models together on one key. The cost is read from the key's total spending, so the two runs would be mixed up |
 | Memory | The local model already needs most of your memory. Close other heavy apps |
 
-**Use a coding or instruct model, not a "thinking" model, for the local route.** In our testing, DeepSeek V4 Flash (a model that reasons aloud) went through the local route twice and made no edits: one run stopped after 1.4 minutes and the other ran until the 30-minute limit. The same model works through the cloud route. A non-reasoning coder model, Qwen3-Coder 30B-A3B, scored 100 through the same local route. We do not yet know why reasoning models fail there, so check any new local model on the easy task first. The tool now warns when a run changed no files.
+**Check any new local model on the easy task first.** In our testing, DeepSeek V4 Flash went through the local route twice and made no edits: one run stopped after 1.4 minutes and the other ran until the 30-minute limit. The same model works through the cloud route. Qwen 3.5 (35B-A3B), Gemma 4 (26B-A4B) and Qwen3-Coder (30B-A3B) all worked through the same local route, so this is not a general problem with models that reason aloud. We have not found the cause for DeepSeek V4. The tool warns when a run changed no files.
 
 ## One run, step by step (the manual way, using the web UI)
 
@@ -200,12 +276,12 @@ Run through the harness (`@deepseek-ai/dsh` 0.2.1, headless) on OpenRouter, one 
 
 | Model | Easy | Medium | Hard | Total cost | Total time |
 |---|---|---|---|---|---|
-| DeepSeek V4 Flash | 100 (3.0 min, $0.016) | 100 (2.2 min, $0.051) | 100 (8.5 min, $0.161) | $0.23 | 13.6 min |
-| DeepSeek V4 Pro | 100 (2.6 min, $0.032) | 100 (1.7 min, $0.093) | 99.8 (12.8 min, $0.501) | $0.63 | 17.1 min |
+| DeepSeek V4 Flash | 100 (3.0 min, $0.016) | 100 (2.2 min, $0.025) | 100 (8.5 min, $0.178) | $0.22 | 13.6 min |
+| DeepSeek V4 Pro | 100 (2.6 min, $0.048) | 100 (1.7 min, $0.104) | 99.8 (12.8 min, $0.583) | $0.74 | 17.1 min |
 
 - The overlay file works, and `--model` switches models through `DSH_MODEL`.
 - In the one run whose session log was read (easy task, Flash), the model only read, searched and edited files, and ran no commands.
-- The cost from the ladder tool matched the key's total usage on OpenRouter for the first run ($0.0164).
+- Costs in this table are the exact charges from OpenRouter's per-reply records. An earlier version of the tool read the change in the key's total spending instead. That total lags by a few seconds, so it read 10 to 16% low on the longer runs, and the tool now uses the per-reply records.
 - The setup script needs Node 22.22+ or 24.15+. Node 20 is refused.
 - The mission file (`MISSION.md`) is read by the harness, and a solved run still scores 100 with it in the folder.
 - Cloud and local at the same time (`compare`): both ran at once and finished separately. The local route was tested by pointing it at OpenRouter, since there was no local server on the test machine. Qwen3-Coder 30B-A3B scored 100 in 2.5 minutes. A teammate's commit (which resolves Ollama model tags) describes a run against a real Ollama server.
@@ -214,7 +290,8 @@ Run through the harness (`@deepseek-ai/dsh` 0.2.1, headless) on OpenRouter, one 
 ## Still to verify
 
 - **TODO(verify):** a local model that handles tool calls on a typical attendee laptop, and how long the medium task takes on it. We tested the local route (`--local`, `local.patch.yml`) by pointing it at OpenRouter, not at a real local server, so check it once on your own machine.
-- **TODO(verify):** why a reasoning model makes no edits through the local route. We saw it with DeepSeek V4 Flash and have not found the cause.
+- **TODO(verify):** why DeepSeek V4 Flash makes no edits through the local route while other reasoning models (Qwen 3.5, Gemma 4) do. A likely suspect is how its reasoning text is passed back to it between steps. The harness has model settings for that (`compat`), which we have not tried. This only matters if someone serves DeepSeek V4 locally.
+- **TODO(verify):** the seven-setup runs on the hard mission (`labels-feature`). We ran all seven on the easy task to test the pipeline. The local runs used OpenRouter copies of Qwen 3.5 35B-A3B and Gemma 4 26B-A4B as stand-ins for a local server, so their cost shows $0 and the numbers are not what your laptop will give.
 - **TODO(verify):** the web UI route (adding the provider by hand) on a clean machine. Only the headless route was tested.
 - **TODO(verify):** a shared workshop key. Cost is measured per key, so simultaneous runs on one key will give wrong costs. Use `--cost`.
 - Both cloud models passed all three jobs, so this ladder does not yet show where a cheap model fails. A small local model or a harder job is needed for that. Run it once yourselves before the day and keep the table as a fallback in case the network fails.

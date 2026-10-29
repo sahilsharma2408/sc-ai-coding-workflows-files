@@ -1,0 +1,20 @@
+{
+  "mission": "labels-feature",
+  "models": {
+    "sonnet": { "agent": "claude", "model": "sonnet", "label": "Claude Sonnet" },
+    "haiku": { "agent": "claude", "model": "haiku", "label": "Claude Haiku" },
+    "deepseek-pro": { "agent": "dsh", "source": "openrouter", "model": "deepseek/deepseek-v4-pro", "label": "DeepSeek V4 Pro" },
+    "deepseek-flash": { "agent": "dsh", "source": "openrouter", "model": "deepseek/deepseek-v4-flash", "label": "DeepSeek V4 Flash" },
+    "qwen": { "agent": "dsh", "source": "local", "model": "qwen3.5", "label": "Qwen 3.5" },
+    "gemma": { "agent": "dsh", "source": "local", "model": "gemma4", "label": "Gemma 4" }
+  },
+  "setups": [
+    { "id": "1", "slug": "s1-sonnet", "name": "Sonnet alone", "agent": "claude", "orchestrator": "sonnet", "subagent": null },
+    { "id": "2", "slug": "s2-sonnet-haiku", "name": "Sonnet orchestrates, Haiku implements", "agent": "claude", "orchestrator": "sonnet", "subagent": "haiku" },
+    { "id": "3", "slug": "s3-deepseek-pro", "name": "DeepSeek V4 Pro alone", "agent": "dsh", "orchestrator": "deepseek-pro", "subagent": null },
+    { "id": "4", "slug": "s4-pro-flash", "name": "V4 Pro orchestrates, V4 Flash implements", "agent": "dsh", "orchestrator": "deepseek-pro", "subagent": "deepseek-flash" },
+    { "id": "5", "slug": "s5-flash-gemma", "name": "V4 Flash orchestrates, local Gemma 4 implements", "agent": "dsh", "orchestrator": "deepseek-flash", "subagent": "gemma" },
+    { "id": "6", "slug": "s6-qwen", "name": "Local Qwen 3.5 alone", "agent": "dsh", "orchestrator": "qwen", "subagent": null },
+    { "id": "7", "slug": "s7-qwen-gemma", "name": "Local Qwen 3.5 orchestrates, local Gemma 4 implements", "agent": "dsh", "orchestrator": "qwen", "subagent": "gemma" }
+  ]
+}

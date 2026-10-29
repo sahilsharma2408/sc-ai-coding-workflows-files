@@ -2,7 +2,7 @@
 
 Level: {{level}} · Type: {{type}}
 
-You are a coding agent working alone in this folder. Do the mission below in one pass, then stop.
+You are a coding agent working in this folder. Do the mission below in one pass, then stop. The message that sent you here says whether you work alone or lead sub-agents.
 
 ## The mission
 

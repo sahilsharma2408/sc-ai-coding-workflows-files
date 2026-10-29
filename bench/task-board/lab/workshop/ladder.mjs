@@ -21,6 +21,7 @@ import os from 'node:os'
 import path from 'node:path'
 import readline from 'node:readline'
 import { fileURLToPath } from 'node:url'
+import { priceDsh, summarizeDsh } from './usage.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const LAB = path.resolve(HERE, '..')
@@ -272,12 +273,26 @@ if (command === 'tasks') {
   const started = readJson(state, null)
   if (!started) fail(`no start found for ${run}. Run "start" first.`)
   if (!fs.existsSync(dir)) fail(`${dir} is missing`)
-  const seconds = Math.round((Date.now() - started.startedAt) / 1000)
+  const seconds = option('seconds') ? Math.round(Number(option('seconds'))) : Math.round((Date.now() - started.startedAt) / 1000)
   const usageEnd = await keyUsage()
   const manual = option('cost')
   let cost = null
   if (manual !== undefined) cost = Number(manual)
-  else if (started.usageStart !== null && usageEnd !== null) cost = Math.max(0, usageEnd - started.usageStart)
+  else {
+    // Best: what OpenRouter charged for each reply in the harness session (exact, and safe when runs overlap).
+    // Fallback: the change in the key's total spending, which lags a few seconds and so reads a little low.
+    try {
+      const used = summarizeDsh(dir)
+      const key = process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY
+      if (used && key) {
+        const priced = await priceDsh(used, key)
+        if (priced.total !== null && priced.method.startsWith('exact')) cost = priced.total
+      }
+    } catch {
+      // fall through to the key's spending
+    }
+    if (cost === null && started.usageStart !== null && usageEnd !== null) cost = Math.max(0, usageEnd - started.usageStart)
+  }
   console.log(`Scoring ${run} (about a minute)...`)
   const name = `ladder-${run}`
   const score = spawnSync(process.execPath, [LAB_CLI, 'score', taskId, dir, '--name', name], { encoding: 'utf8' })
@@ -288,7 +303,7 @@ if (command === 'tasks') {
   const row = { task: taskId, model, score: report.score, seconds, cost, changed, date: new Date().toISOString() }
   saveResults([...results().filter((r) => !(r.task === taskId && r.model === model)), row])
   console.log(`\nTime ${(seconds / 60).toFixed(1)} min   Cost ${cost === null ? 'unknown' : `$${cost.toFixed(4)}`}   Score ${report.score.toFixed(1)} / 100`)
-  if (changed === false) console.log('\nWARNING: the model changed no files. This score is the score of an untouched folder, so the run did not work.\nCommon causes: a model without tool-call support, a model that reasons aloud (a "thinking" model) on the local route, a context window that is too small, or a harness error. Read the log above.')
+  if (changed === false) console.log('\nWARNING: the model changed no files. This score is the score of an untouched folder, so the run did not work.\nCommon causes: a model without tool-call support, a model the harness cannot talk to properly on the local route (DeepSeek V4 did this), a context window that is too small, or a harness error. Read the log above.')
   if (cost === null) console.log('Cost is unknown. Re-run finish with --cost <usd> from the OpenRouter activity page.')
   if (cost === 0 && manual === undefined) console.log('Cost came out as $0. That is right for a local model. For a cloud model, check the OpenRouter activity page.')
 } else if (command === 'table') {

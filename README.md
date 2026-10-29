@@ -13,7 +13,7 @@ Run `node setup.mjs` at home (see [Before you arrive](#before-you-arrive)). At t
 | `setup.mjs` | Pre-workshop setup and check script (see [Before you arrive](#before-you-arrive)) |
 | `test/` | Tests for `setup.mjs`, including Docker sandbox runs |
 | `bench/task-board/` | Benchmarks for coding models: a build-from-spec benchmark and a task-type lab (single-file fix, multi-file debug, cross-file feature, migration, contract change, code review) with hidden tests, scorers and a token and cost audit. See its [README](bench/task-board/README.md) and the [lab README](bench/task-board/lab/README.md) |
-| `bench/task-board/lab/workshop/` | The model ladder for the workshop: one command runs a task through the harness on a cloud or local model, scores it, and records time and cost. Start with [WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md) |
+| `bench/task-board/lab/workshop/` | The workshop benchmark: one mission given to seven setups (Claude Code and the DeepSeek harness, cloud and local models, with and without sub-agents), run one at a time or in parallel, with an HTML report of score, cost, time and tokens. Start with [WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md), the mission in [mission.md](bench/task-board/lab/workshop/mission.md), and the talk plan in [PRESENTING.md](bench/task-board/lab/workshop/PRESENTING.md) |
 | `harness/README.md` | Draft notes for connecting the DeepSeek harness to OpenRouter and local models, and for subagent models |
 | `.gitignore` | Excludes `node_modules`, build output, local env files and editor files |
 
@@ -82,6 +82,7 @@ Running a model on your own laptop works best with Apple silicon or a GPU with 1
 
 ```bash
 node --test test/setup.test.mjs   # unit and integration tests, no network or keys needed
+node --test test/bench.test.mjs   # the benchmark report, usage parser and setup list, no network needed
 test/sandbox.sh                   # full runs in clean Docker containers (Node 22 and 24; Node 18 and 20 must be rejected)
 ```
 
