@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission benchmark report</title>
+<style>
+:root{--bg:#f7f7f3;--card:#fff;--ink:#1b1b1b;--mute:#5f6b66;--line:#d9dcd8;--bar:#9aa7a1;--best:#0b996e;--warn:#b45309;--warnbg:#fff4e5}
+@media (prefers-color-scheme:dark){:root{--bg:#141716;--card:#1d2120;--ink:#ecefed;--mute:#9aa6a0;--line:#343b38;--bar:#5d6a64;--best:#3ddc9f;--warn:#fbbf24;--warnbg:#2c2410}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px 16px 64px}
+main{max-width:1180px;margin:0 auto}h1{font-size:34px;margin:0 0 4px;letter-spacing:-.5px}h2{font-size:24px;margin:40px 0 12px}h3{font-size:18px;margin:0 0 10px}h4{margin:0 0 6px;font-size:15px;color:var(--mute)}
+.sub{color:var(--mute);font-size:14px}.lead{color:var(--mute);margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.strong{font-weight:700;font-size:19px}
+.missing td{color:var(--mute)}.ok{color:var(--best);font-weight:600}.warn{color:var(--warn);font-weight:600;cursor:help}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:16px}.chart ul{list-style:none;margin:0;padding:0}
+.chart li{display:grid;grid-template-columns:minmax(150px,1fr) 2fr 84px;gap:10px;align-items:center;padding:4px 0;font-size:15px}
+.track{background:color-mix(in srgb,var(--line) 55%,transparent);border-radius:6px;height:18px;display:block}.bar{display:block;height:18px;border-radius:6px;background:var(--bar)}.bar.best{background:var(--best)}
+.none{color:var(--mute);font-size:13px;padding-left:8px}.val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.find li{margin:8px 0}details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}summary{cursor:pointer}
+.detail{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:12px}.mini td,.mini th{padding:4px 8px;font-size:14px}
+pre{background:color-mix(in srgb,var(--line) 35%,transparent);padding:12px;border-radius:8px;overflow:auto;font-size:13px;white-space:pre-wrap}
+.warnbox{background:var(--warnbg);border-left:4px solid var(--warn);padding:8px 12px;border-radius:6px}
+.caveats{color:var(--mute);font-size:15px}.caveats li{margin:6px 0}
+</style></head><body><main>
+<h1>Mission benchmark report</h1>
+<p class="lead">Mission: <b>fix-date-file</b>. The same job, given as <code>MISSION.md</code>, to 7 setups. 7 of 7 have a result. Last run 29/10/2026, 14:40:29.</p>
+
+<h2>Scoreboard</h2>
+<div class="card scroll"><table><thead><tr><th>#</th><th>Setup</th><th class="num">Score</th><th class="num">Cost</th><th class="num">Time</th><th class="num" title="main agent turns + sub-agent turns">Turns</th><th class="num">Tool calls</th><th class="num">Sub-agents</th><th class="num">Tokens</th><th>Rules</th></tr></thead><tbody><tr><td>1</td><td><b>Sonnet alone</b><br><span class="sub">Claude Code · Claude Sonnet</span></td><td class="num strong">100.0</td><td class="num">$0.100</td><td class="num">0:19</td><td class="num">6</td><td class="num">8</td><td class="num">0</td><td class="num">171K</td><td><span class="ok">ok</span></td></tr><tr><td>2</td><td><b>Sonnet orchestrates, Haiku implements</b><br><span class="sub">Claude Code · Claude Sonnet → Claude Haiku</span></td><td class="num strong">100.0</td><td class="num">$0.19</td><td class="num">0:26</td><td class="num">7 + 3</td><td class="num">11</td><td class="num">1</td><td class="num">256K</td><td><span class="ok">ok</span></td></tr><tr><td>3</td><td><b>DeepSeek V4 Pro alone</b><br><span class="sub">DeepSeek harness · DeepSeek V4 Pro</span></td><td class="num strong">100.0</td><td class="num">$0.093</td><td class="num">2:06</td><td class="num">14</td><td class="num">22</td><td class="num">0</td><td class="num">234K</td><td><span class="ok">ok</span></td></tr><tr><td>4</td><td><b>V4 Pro orchestrates, V4 Flash implements</b><br><span class="sub">DeepSeek harness · DeepSeek V4 Pro → DeepSeek V4 Flash</span></td><td class="num strong">100.0</td><td class="num">$0.047</td><td class="num">1:29</td><td class="num">8 + 6</td><td class="num">19</td><td class="num">1</td><td class="num">159K</td><td><span class="ok">ok</span></td></tr><tr><td>5</td><td><b>V4 Flash orchestrates, local Gemma 4 implements</b><br><span class="sub">DeepSeek harness · DeepSeek V4 Flash → Gemma 4 (local)</span></td><td class="num strong">100.0</td><td class="num">$0.013</td><td class="num">3:57</td><td class="num">10 + 10</td><td class="num">25</td><td class="num">1</td><td class="num">240K</td><td><span class="ok">ok</span></td></tr><tr><td>6</td><td><b>Local Qwen 3.5 alone</b><br><span class="sub">DeepSeek harness · Qwen 3.5 (local)</span></td><td class="num strong">46.5</td><td class="num">$0</td><td class="num">2:49</td><td class="num">16</td><td class="num">15</td><td class="num">0</td><td class="num">202K</td><td><span class="ok">ok</span></td></tr><tr><td>7</td><td><b>Local Qwen 3.5 orchestrates, local Gemma 4 implements</b><br><span class="sub">DeepSeek harness · Qwen 3.5 (local) → Gemma 4 (local)</span></td><td class="num strong">45.2</td><td class="num">$0</td><td class="num">12:09</td><td class="num">67 + 7</td><td class="num">73</td><td class="num">1</td><td class="num">1.79M</td><td><span class="warn" title="the orchestrator edited files itself (3 edit calls)">1 problem</span></td></tr></tbody></table></div>
+
+<h2>Side by side</h2><div class="charts"><section class="chart"><h3>Score out of 100 (higher is better)</h3><ul><li><span class="lab">1. Sonnet alone</span><span class="track"><span class="bar best" style="width:100.0%"></span></span><span class="val">100.0</span></li><li><span class="lab">2. Sonnet + Haiku</span><span class="track"><span class="bar best" style="width:100.0%"></span></span><span class="val">100.0</span></li><li><span class="lab">3. DeepSeek V4 Pro alone</span><span class="track"><span class="bar best" style="width:100.0%"></span></span><span class="val">100.0</span></li><li><span class="lab">4. V4 Pro + V4 Flash</span><span class="track"><span class="bar best" style="width:100.0%"></span></span><span class="val">100.0</span></li><li><span class="lab">5. V4 Flash + local Gemma 4</span><span class="track"><span class="bar best" style="width:100.0%"></span></span><span class="val">100.0</span></li><li><span class="lab">6. Qwen 3.5 alone</span><span class="track"><span class="bar" style="width:46.5%"></span></span><span class="val">46.5</span></li><li><span class="lab">7. Qwen 3.5 + local Gemma 4</span><span class="track"><span class="bar" style="width:45.2%"></span></span><span class="val">45.2</span></li></ul></section><section class="chart"><h3>Cost in dollars (lower is better)</h3><ul><li><span class="lab">1. Sonnet alone</span><span class="track"><span class="bar" style="width:51.3%"></span></span><span class="val">$0.100</span></li><li><span class="lab">2. Sonnet + Haiku</span><span class="track"><span class="bar" style="width:100.0%"></span></span><span class="val">$0.19</span></li><li><span class="lab">3. DeepSeek V4 Pro alone</span><span class="track"><span class="bar" style="width:47.8%"></span></span><span class="val">$0.093</span></li><li><span class="lab">4. V4 Pro + V4 Flash</span><span class="track"><span class="bar" style="width:24.2%"></span></span><span class="val">$0.047</span></li><li><span class="lab">5. V4 Flash + local Gemma 4</span><span class="track"><span class="bar" style="width:6.6%"></span></span><span class="val">$0.013</span></li><li><span class="lab">6. Qwen 3.5 alone</span><span class="track"><span class="bar best" style="width:1.5%"></span></span><span class="val">$0</span></li><li><span class="lab">7. Qwen 3.5 + local Gemma 4</span><span class="track"><span class="bar best" style="width:1.5%"></span></span><span class="val">$0</span></li></ul></section><section class="chart"><h3>Time in minutes (lower is better)</h3><ul><li><span class="lab">1. Sonnet alone</span><span class="track"><span class="bar best" style="width:2.6%"></span></span><span class="val">0.3 min</span></li><li><span class="lab">2. Sonnet + Haiku</span><span class="track"><span class="bar" style="width:3.6%"></span></span><span class="val">0.4 min</span></li><li><span class="lab">3. DeepSeek V4 Pro alone</span><span class="track"><span class="bar" style="width:17.3%"></span></span><span class="val">2.1 min</span></li><li><span class="lab">4. V4 Pro + V4 Flash</span><span class="track"><span class="bar" style="width:12.2%"></span></span><span class="val">1.5 min</span></li><li><span class="lab">5. V4 Flash + local Gemma 4</span><span class="track"><span class="bar" style="width:32.5%"></span></span><span class="val">4.0 min</span></li><li><span class="lab">6. Qwen 3.5 alone</span><span class="track"><span class="bar" style="width:23.2%"></span></span><span class="val">2.8 min</span></li><li><span class="lab">7. Qwen 3.5 + local Gemma 4</span><span class="track"><span class="bar" style="width:100.0%"></span></span><span class="val">12.2 min</span></li></ul></section><section class="chart"><h3>Tokens processed (lower is lighter)</h3><ul><li><span class="lab">1. Sonnet alone</span><span class="track"><span class="bar" style="width:9.6%"></span></span><span class="val">171K</span></li><li><span class="lab">2. Sonnet + Haiku</span><span class="track"><span class="bar" style="width:14.3%"></span></span><span class="val">256K</span></li><li><span class="lab">3. DeepSeek V4 Pro alone</span><span class="track"><span class="bar" style="width:13.1%"></span></span><span class="val">234K</span></li><li><span class="lab">4. V4 Pro + V4 Flash</span><span class="track"><span class="bar best" style="width:8.9%"></span></span><span class="val">159K</span></li><li><span class="lab">5. V4 Flash + local Gemma 4</span><span class="track"><span class="bar" style="width:13.4%"></span></span><span class="val">240K</span></li><li><span class="lab">6. Qwen 3.5 alone</span><span class="track"><span class="bar" style="width:11.3%"></span></span><span class="val">202K</span></li><li><span class="lab">7. Qwen 3.5 + local Gemma 4</span><span class="track"><span class="bar" style="width:100.0%"></span></span><span class="val">1.79M</span></li></ul></section></div>
+
+<h2>What the numbers say</h2><div class="card"><ul class="find"><li><b>Best score:</b> 1. Sonnet alone; 2. Sonnet orchestrates, Haiku implements; 3. DeepSeek V4 Pro alone; 4. V4 Pro orchestrates, V4 Flash implements; 5. V4 Flash orchestrates, local Gemma 4 implements with 100.0 out of 100.</li><li><b>Cheapest within 5 points of the best:</b> 5. V4 Flash orchestrates, local Gemma 4 implements at $0.013 (100.0 points).</li><li><b>Fastest within 5 points of the best:</b> 1. Sonnet alone in 0:19 (minutes:seconds).</li><li><b>Adding sub-agents (Claude, setup 1 to 2):</b> score +0.0 points, cost +95%, time +37%.</li><li><b>Adding sub-agents (DeepSeek in the cloud, setup 3 to 4):</b> score +0.0 points, cost −49%, time −29%.</li><li><b>Adding sub-agents (local models, setup 6 to 7):</b> score −1.4 points, cost n/a, time +331%.</li><li><b>Local against cloud:</b> best local 46.5 (6. Local Qwen 3.5 alone), best cloud 100.0 (1. Sonnet alone). Local runs cost no money, but they use your laptop's time, memory and power.</li><li><b>Rule problems in 1 run(s):</b> setup 7 (the orchestrator edited files itself (3 edit calls)). Read these runs with care.</li><li>A setup with a rule problem is still scored, but it is not a clean example of what it claims to be.</li></ul></div>
+
+<h2>Details per setup</h2><details><summary><b>1. Sonnet alone</b> <span class="sub">score 100.0 · $0.100 · 0:19</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">60.0</td></tr><tr><td>regression</td><td class="num">25.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>claude-sonnet-5-5</td><td class="num">6</td><td class="num">171K</td><td class="num">$0.100</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">6</td><td class="num">8</td><td class="num">2</td><td class="num">171K</td></tr>
+<tr><td>Sub-agents (0)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr></table></div></div>
+<p class="sub">Cost: exact, from Claude Code&#39;s own cost figure (list prices).</p>
+
+</details><details><summary><b>2. Sonnet orchestrates, Haiku implements</b> <span class="sub">score 100.0 · $0.19 · 0:26</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">60.0</td></tr><tr><td>regression</td><td class="num">25.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>claude-sonnet-5-5</td><td class="num">7</td><td class="num">230K</td><td class="num">$0.19</td></tr><tr><td>claude-haiku-5-5</td><td class="num">3</td><td class="num">26K</td><td class="num">$0.002</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">7</td><td class="num">8</td><td class="num">0</td><td class="num">230K</td></tr>
+<tr><td>Sub-agents (1)</td><td class="num">3</td><td class="num">3</td><td class="num">2</td><td class="num">26K</td></tr></table></div></div>
+<p class="sub">Cost: exact, from Claude Code&#39;s own cost figure (list prices).</p>
+
+</details><details><summary><b>3. DeepSeek V4 Pro alone</b> <span class="sub">score 100.0 · $0.093 · 2:06</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">60.0</td></tr><tr><td>regression</td><td class="num">25.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>deepseek/deepseek-v4-pro</td><td class="num">14</td><td class="num">234K</td><td class="num">$0.093</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">14</td><td class="num">22</td><td class="num">3</td><td class="num">234K</td></tr>
+<tr><td>Sub-agents (0)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr></table></div></div>
+<p class="sub">Cost: exact, from OpenRouter generation records.</p>
+
+</details><details><summary><b>4. V4 Pro orchestrates, V4 Flash implements</b> <span class="sub">score 100.0 · $0.047 · 1:29</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">60.0</td></tr><tr><td>regression</td><td class="num">25.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>deepseek/deepseek-v4-flash</td><td class="num">6</td><td class="num">53K</td><td class="num">$0.005</td></tr><tr><td>deepseek/deepseek-v4-pro</td><td class="num">8</td><td class="num">106K</td><td class="num">$0.042</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">8</td><td class="num">14</td><td class="num">0</td><td class="num">106K</td></tr>
+<tr><td>Sub-agents (1)</td><td class="num">6</td><td class="num">5</td><td class="num">3</td><td class="num">53K</td></tr></table></div></div>
+<p class="sub">Cost: exact, from OpenRouter generation records.</p>
+
+</details><details><summary><b>5. V4 Flash orchestrates, local Gemma 4 implements</b> <span class="sub">score 100.0 · $0.013 · 3:57</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">60.0</td></tr><tr><td>regression</td><td class="num">25.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>gemma4:12b</td><td class="num">10</td><td class="num">103K</td><td class="num">$0</td></tr><tr><td>deepseek/deepseek-v4-flash</td><td class="num">10</td><td class="num">137K</td><td class="num">$0.013</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">10</td><td class="num">16</td><td class="num">0</td><td class="num">137K</td></tr>
+<tr><td>Sub-agents (1)</td><td class="num">10</td><td class="num">9</td><td class="num">4</td><td class="num">103K</td></tr></table></div></div>
+<p class="sub">Cost: exact, from OpenRouter generation records.</p>
+
+</details><details><summary><b>6. Local Qwen 3.5 alone</b> <span class="sub">score 46.5 · $0 · 2:49</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">7.5</td></tr><tr><td>regression</td><td class="num">24.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">4.0</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>qwen3.5:35b-a3b</td><td class="num">16</td><td class="num">202K</td><td class="num">$0</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">16</td><td class="num">15</td><td class="num">2</td><td class="num">202K</td></tr>
+<tr><td>Sub-agents (0)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr></table></div></div>
+<p class="sub">Cost: no cloud calls (local models cost nothing in money).</p>
+
+<pre>task tests failing:
+  - date fixes [LAB 2] the report lists a task due today as not overdue
+  - date fixes [LAB 3] a card due today has no Overdue badge but one due yesterday has
+  - date fixes [LAB 3] isOverdue is false for a task due today and true for one due yesterday
+  - date fixes [LAB 3] isPastDate says today is not past and yesterday is
+  - date fixes [LAB 3] the add form accepts today as a due date
+4 regression test(s) broke, e.g.:
+  - R-BOARD: layout, columns and cards [REQ 3] open tasks with a past due date show &quot;Overdue&quot;; done or future tasks do not
+  - R-DATE: date and id utilities [EDGE 1] toIsoDate and isPastDate agree across a year boundary
+  - R-DATE: date and id utilities [EDGE 3] today is not in the past, and not overdue
+  - R-FORM: add task form [EDGE 3] a due date of today is accepted</pre></details><details><summary><b>7. Local Qwen 3.5 orchestrates, local Gemma 4 implements</b> <span class="sub">score 45.2 · $0 · 12:09</span></summary>
+<div class="detail"><div><h4>Score parts</h4><table class="mini"><tr><td>task</td><td class="num">7.5</td></tr><tr><td>regression</td><td class="num">24.0</td></tr><tr><td>tsc</td><td class="num">5.0</td></tr><tr><td>build</td><td class="num">4.0</td></tr><tr><td>scope</td><td class="num">2.6</td></tr><tr><td>testsKept</td><td class="num">2.0</td></tr></table></div>
+<div><h4>By model</h4><table class="mini"><tr><th>Model</th><th>Turns</th><th>Tokens</th><th>Cost</th></tr><tr><td>gemma4:12b</td><td class="num">7</td><td class="num">70K</td><td class="num">$0</td></tr><tr><td>qwen3.5:35b-a3b</td><td class="num">67</td><td class="num">1.72M</td><td class="num">$0</td></tr></table></div>
+<div><h4>By role</h4><table class="mini"><tr><th></th><th>Turns</th><th>Tool calls</th><th>Edits</th><th>Tokens</th></tr>
+<tr><td>Main agent</td><td class="num">67</td><td class="num">67</td><td class="num">3</td><td class="num">1.72M</td></tr>
+<tr><td>Sub-agents (1)</td><td class="num">7</td><td class="num">6</td><td class="num">3</td><td class="num">70K</td></tr></table></div></div>
+<p class="sub">Cost: no cloud calls (local models cost nothing in money).</p>
+<p class="warnbox"><b>Rule check:</b> the orchestrator edited files itself (3 edit calls)</p>
+<pre>files changed outside the expected set: plan.md
+task tests failing:
+  - date fixes [LAB 2] the report lists a task due today as not overdue
+  - date fixes [LAB 3] a card due today has no Overdue badge but one due yesterday has
+  - date fixes [LAB 3] isOverdue is false for a task due today and true for one due yesterday
+  - date fixes [LAB 3] isPastDate says today is not past and yesterday is
+  - date fixes [LAB 3] the add form accepts today as a due date
+4 regression test(s) broke, e.g.:
+  - R-BOARD: layout, columns and cards [REQ 3] open tasks with a past due date show &quot;Overdue&quot;; done or future tasks do not
+  - R-DATE: date and id utilities [EDGE 1] toIsoDate and isPastDate agree across a year boundary
+  - R-DATE: date and id utilities [EDGE 3] today is not in the past, and not overdue
+  - R-FORM: add task form [EDGE 3] a due date of today is accepted</pre></details>
+
+<h2>How to read this</h2><div class="card"><ul class="caveats">
+<li><b>Score</b> is out of 100 from hidden tests: the mission itself 60, existing behaviour 25, hygiene 15 (type-check, build, scope, tests kept). Each part is curved, so almost right earns much less than right.</li>
+<li><b>Cost</b> for the DeepSeek harness is what OpenRouter charged for each reply. For Claude Code it is Claude Code's own figure at list prices. Local models cost $0 in money, not in time, memory or power.</li>
+<li><b>One run is a sample, not a ranking.</b> The same model can score very differently on the same job from one run to the next.</li>
+<li><b>Time</b> is only fair for runs done one at a time. When setups run together they share one laptop, and a local model can slow down while cloud runs and scoring are busy.</li>
+<li><b>Rules</b>: a setup meant to use sub-agents should use them, an orchestrator should not edit files itself, a setup that works alone should not start sub-agents, and nobody runs shell commands.</li>
+<li>Turns are model replies. Tool calls are the reads, searches and edits that followed. Tokens are input, output and cached input together.</li>
+</ul></div>
+</main></body></html>

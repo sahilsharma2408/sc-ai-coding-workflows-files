@@ -14,6 +14,9 @@ Run `node setup.mjs` at home (see [Before you arrive](#before-you-arrive)). At t
 | `test/` | Tests for `setup.mjs`, including Docker sandbox runs |
 | `bench/task-board/` | Benchmarks for coding models: a build-from-spec benchmark and a task-type lab (single-file fix, multi-file debug, cross-file feature, migration, contract change, code review) with hidden tests, scorers and a token and cost audit. See its [README](bench/task-board/README.md) and the [lab README](bench/task-board/lab/README.md) |
 | `bench/task-board/lab/workshop/` | The workshop benchmark: one mission given to seven setups (Claude Code and the DeepSeek harness, cloud and local models, with and without sub-agents), run one at a time or in parallel, with an HTML report of score, cost, time and tokens. Start with [WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md), the mission in [mission.md](bench/task-board/lab/workshop/mission.md), and the talk plan in [PRESENTING.md](bench/task-board/lab/workshop/PRESENTING.md) |
+| `bench/task-board/lab/workshop/live/` | The live-demo run sheet: [prompts.html](bench/task-board/lab/workshop/live/prompts.html) has the launch command and prompt for each of the seven setups, each with a copy button, plus the DeepSeek harness patch files (`s3` to `s7`) it points to. See [Following the live demo](#following-the-live-demo) |
+| `bench/task-board/lab/workshop/slides/` | The workshop slide deck as source files (`project/deck.json` and one HTML file per slide, speaker notes included) |
+| `bench/task-board/lab/workshop/reports/` | A saved benchmark report, [report-fix-date-file.html](bench/task-board/lab/workshop/reports/report-fix-date-file.html), for the easy `fix-date-file` task. Open it in a browser |
 | `harness/README.md` | Draft notes for connecting the DeepSeek harness to OpenRouter and local models, and for subagent models |
 | `.gitignore` | Excludes `node_modules`, build output, local env files and editor files |
 
@@ -85,6 +88,15 @@ node --test test/setup.test.mjs   # unit and integration tests, no network or ke
 node --test test/bench.test.mjs   # the benchmark report, usage parser and setup list, no network needed
 test/sandbox.sh                   # full runs in clean Docker containers (Node 22 and 24; Node 18 and 20 must be rejected)
 ```
+
+## Following the live demo
+
+1. Open `bench/task-board/lab/workshop/live/prompts.html` in your browser.
+2. Run the one-time "Before you start" step to create the seven mission folders.
+3. Open one terminal per setup, copy its command and prompt with the Copy buttons, and run them.
+4. Open `bench/task-board/lab/workshop/reports/report-fix-date-file.html` to compare with a finished run.
+
+The run sheet assumes the repo is at `~/workspace/sc-ai-coding-workflows-files`. If you cloned it somewhere else, edit the `REPO` line at the top of the script in `prompts.html`, and the `L=` line in its "Before you start" box.
 
 ## Credits
 

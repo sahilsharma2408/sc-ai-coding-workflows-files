@@ -1,0 +1,73 @@
+{
+  "v": 4,
+  "attachments": {},
+  "cover": "cd7bad3a",
+  "createdOnFiles": {
+    "at": "2026-10-26T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "faces": {
+    "alexandria": {
+      "family": "Alexandria",
+      "href": "https://fonts.googleapis.com/css2?family=Alexandria:wght@300..700&display=swap"
+    },
+    "inter": {
+      "family": "Inter",
+      "href": "https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap"
+    },
+    "jetbrains-mono": {
+      "family": "JetBrains Mono",
+      "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400..700&display=swap"
+    }
+  },
+  "lists": "css",
+  "order": [
+    "cd7bad3a",
+    "c0a51fda",
+    "9ca585e3",
+    "a7e4c2d1",
+    "b3f9d5e2",
+    "c5d2e7a9",
+    "openrouter-qr",
+    "d8b4f1c3",
+    "e1a9b7c4",
+    "a3c7e9b1",
+    "c6e1a8d4",
+    "e8a3c5f7",
+    "f9b4d6a8",
+    "a1b5c9d3",
+    "c3d7e1f5",
+    "e5f9a3b7",
+    "report-cloud",
+    "setup5-hybrid",
+    "setup6-qwen",
+    "setup7-qwen-gemma",
+    "report-all",
+    "prompts-qr",
+    "thanks"
+  ],
+  "sections": {
+    "s1": {
+      "description": "The workshop, its goals and the seven setups",
+      "start": "cd7bad3a"
+    },
+    "s2": {
+      "description": "Setup: the repo, the mission and your first run",
+      "start": "b3f9d5e2"
+    },
+    "s3": {
+      "description": "Claude Code: setups 1 and 2",
+      "start": "e1a9b7c4"
+    },
+    "s4": {
+      "description": "DeepSeek harness: setups 3 and 4, then the cloud report",
+      "start": "e8a3c5f7"
+    },
+    "s5": {
+      "description": "Hybrid and fully local: setups 5 to 7, then the final report",
+      "start": "setup5-hybrid"
+    }
+  },
+  "title": "Inference at the Edge of Your IDE: Agentic React Development from Cloud LLMs to On-Device Models"
+}
