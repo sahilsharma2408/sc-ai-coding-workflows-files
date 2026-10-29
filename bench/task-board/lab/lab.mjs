@@ -126,7 +126,7 @@ function changedFiles(before, after) {
   for (const f of a.keys()) if (!b.has(f)) changed.push(f)
   return { changed, before: a, after: b }
 }
-const isTestPath = (f) => /\.(test|spec)\.[tj]sx?$/.test(f) || /(^|\/)(test|tests|__tests__)\//.test(f) || f === 'TASK.md' || f === 'review.json'
+const isTestPath = (f) => /\.(test|spec)\.[tj]sx?$/.test(f) || /(^|\/)(test|tests|__tests__)\//.test(f) || f === 'TASK.md' || f === 'MISSION.md' || f === 'review.json'
 const countTests = (files) => [...files].reduce((n, [f, buf]) => n + (/\.test\.[tj]sx?$/.test(f) ? (buf.toString().match(/\b(it|test)\s*\(/g) ?? []).length : 0), 0)
 
 async function scoreTask(task, workdir, name, { regression: doRegression = true } = {}) {

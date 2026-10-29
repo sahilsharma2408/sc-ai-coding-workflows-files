@@ -26,6 +26,31 @@ Three scored jobs and one review job. Each works on the Task Board app, a small 
 
 Measured time per run on the cloud models: about 2 to 3 minutes for easy, 2 minutes for medium and 8 to 13 for hard. A local model will be slower. In a 90-minute session, give everyone easy and medium, and run hard as a group or on one model only.
 
+## The mission file
+
+Every run gets a folder with a `MISSION.md` in it. That one file is what you hand to the model. It holds the job, the rules of the run, what "done" means and how the work will be judged. It is filled in from `mission.template.md` in this folder, so you can change the wording there.
+
+| Section | What it says |
+|---|---|
+| The mission | The job, in plain words (for example, three date bugs reported by users) |
+| The project | The Task Board app, and that `README.md` holds the house rules |
+| Rules of the run | One pass. Do not run the project. At most 3 sub-agents. Stay inside the folder |
+| Done means | What must be true at the end |
+| How you will be judged | The score parts, without the hidden tests |
+| When you finish | A short note: what changed, and what you were unsure about |
+
+`ladder.mjs run` passes it to DeepSeek for you with this prompt: *"Read MISSION.md in this folder and carry out the mission. Follow its rules of the run."* In the web UI, open the folder and send the same sentence. `MISSION.md` is ignored by the scorer, so it never counts as a change.
+
+## How the benchmark works, end to end
+
+1. **Setup.** `start` copies the Task Board app into a fresh folder, writes `MISSION.md`, and notes the time and the key's spending so far.
+2. **One pass.** The model reads the mission and edits files. It may not run the project, so there is no run, check, fix loop. This is what makes weaker models show.
+3. **Judging.** `finish` stops the clock and scores the folder with tests the model never saw. The score is out of 100: the mission itself 60, the behaviour that already worked 25, and hygiene 15 (type-check, build, staying in scope, keeping existing tests). Each part is curved, so "almost right" earns much less. A failed build caps the score at 60.
+4. **Cost and time.** Cost is the change in the key's spending between start and finish. Time is the wall clock between the same two points.
+5. **The table.** One row per model, one column per level. Compare the cheapest model that scores well with the strongest one, and read the cost and time columns next to the score.
+
+What the numbers can and cannot say: **one run is a sample, not a ranking.** In our own testing the same cloud model, on the same easy task, scored 100 three times and then 46.5 once, because it fixed two of the three bugs and stopped. For a point you care about, run it twice. A "!" next to a score means the model changed no files, so the score is just the untouched-folder score and the run did not work.
+
 ## One run, in one command
 
 The harness has a headless mode (one task in, one answer out), so a whole run is a single command. It makes the folder, starts the clock, sends the prompt through the harness, scores the result and records time and cost.
@@ -62,6 +87,27 @@ node lab/workshop/ladder.mjs run fix-date-file --model local-qwen --local --id q
 The cost is recorded as $0. Say out loud that it still costs time and laptop power, and compare the time column. Nothing leaves the laptop, so this is also the row for the privacy and offline demo.
 
 Things that go wrong with local models: no tool-call support (llama.cpp needs `--jinja`), a context window that is too small, and very slow runs without a GPU or Apple silicon. A run that is stopped by the timeout is still scored, and a low score there is a real result.
+
+### Running the cloud model and the local model at the same time
+
+`compare` runs one cloud model and one local model on the same task together and prints them side by side. It waits for both and shows a table.
+
+```bash
+node lab/workshop/ladder.mjs compare fix-date-file --cloud flash --local local-qwen --local-id qwen3-coder:30b
+```
+
+It also takes `--cloud-id` (any OpenRouter model), `--base-url`, `--context`, `--timeout` and `--again`. It checks the local server first, so nothing is started and no money is spent if the local model is missing.
+
+What to know when you run both at once:
+
+| Point | Detail |
+|---|---|
+| Scores and cost | Not affected. Each run has its own folder, and the local run does not touch your OpenRouter key |
+| Time | Not a fair comparison. Both share the CPU of one laptop, so the local model can run slower while the cloud run and the scoring are busy. Compare time in a separate, one-at-a-time run |
+| Cost with two cloud models | Do not run two cloud models together on one key. The cost is read from the key's total spending, so the two runs would be mixed up |
+| Memory | The local model already needs most of your memory. Close other heavy apps |
+
+**Use a coding or instruct model, not a "thinking" model, for the local route.** In our testing, DeepSeek V4 Flash (a model that reasons aloud) went through the local route twice and made no edits: one run stopped after 1.4 minutes and the other ran until the 30-minute limit. The same model works through the cloud route. A non-reasoning coder model, Qwen3-Coder 30B-A3B, scored 100 through the same local route. We do not yet know why reasoning models fail there, so check any new local model on the easy task first. The tool now warns when a run changed no files.
 
 ## One run, step by step (the manual way, using the web UI)
 
@@ -161,10 +207,14 @@ Run through the harness (`@deepseek-ai/dsh` 0.2.1, headless) on OpenRouter, one 
 - In the one run whose session log was read (easy task, Flash), the model only read, searched and edited files, and ran no commands.
 - The cost from the ladder tool matched the key's total usage on OpenRouter for the first run ($0.0164).
 - The setup script needs Node 22.22+ or 24.15+. Node 20 is refused.
+- The mission file (`MISSION.md`) is read by the harness, and a solved run still scores 100 with it in the folder.
+- Cloud and local at the same time (`compare`): both ran at once and finished separately. The local route was tested by pointing it at OpenRouter, since there was no local server on the test machine. Qwen3-Coder 30B-A3B scored 100 in 2.5 minutes. A teammate's commit (which resolves Ollama model tags) describes a run against a real Ollama server.
+- Variation: cloud Flash on the easy task scored 100, 100, 100 and then 46.5 (two of three bugs fixed). Show this honestly.
 
 ## Still to verify
 
-- **TODO(verify):** a local model that handles tool calls on a typical attendee laptop, and how long the medium task takes on it. Nothing local has been run yet. The local route (`--local`, `local.patch.yml`) was only checked to the point that the harness accepts the overlay; it has not been run against a real local server.
+- **TODO(verify):** a local model that handles tool calls on a typical attendee laptop, and how long the medium task takes on it. We tested the local route (`--local`, `local.patch.yml`) by pointing it at OpenRouter, not at a real local server, so check it once on your own machine.
+- **TODO(verify):** why a reasoning model makes no edits through the local route. We saw it with DeepSeek V4 Flash and have not found the cause.
 - **TODO(verify):** the web UI route (adding the provider by hand) on a clean machine. Only the headless route was tested.
 - **TODO(verify):** a shared workshop key. Cost is measured per key, so simultaneous runs on one key will give wrong costs. Use `--cost`.
 - Both cloud models passed all three jobs, so this ladder does not yet show where a cheap model fails. A small local model or a harder job is needed for that. Run it once yourselves before the day and keep the table as a fallback in case the network fails.

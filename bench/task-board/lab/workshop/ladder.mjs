@@ -6,6 +6,7 @@
 //   node lab/workshop/ladder.mjs finish <task> --model <label>     stop the clock, score, record
 //   node lab/workshop/ladder.mjs run <task> --model <label>        start, run the harness headless, finish (one command)
 //   node lab/workshop/ladder.mjs run <task> --model <label> --local --id <name>   same, with a model on this laptop ("qwen3.5" finds "qwen3.5:35b-a3b")
+//   node lab/workshop/ladder.mjs compare <task> --cloud flash --local <label> --local-id <name>   both at the same time
 //   node lab/workshop/ladder.mjs table [--json]                    your results, models down, tasks across
 //
 // Local options: --base-url (default http://127.0.0.1:11434/v1), --context (tokens, default 32768), --timeout (minutes, default 30).
@@ -13,7 +14,8 @@
 // Cost is the change in the usage of OPENROUTER_API_KEY between start and finish. If other people use the
 // same key at the same time, the change is wrong: pass --cost with the figure from the OpenRouter activity page.
 
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -30,7 +32,7 @@ const LADDER = [
   { id: 'labels-feature', level: 'hard', what: 'a feature across about 20 files' },
   { id: 'review-labels-pr', level: 'review', what: 'read a pull request, report 7 planted defects' },
 ]
-const PROMPT = 'Read TASK.md in this folder and do exactly what it says. Follow its rules of the run.'
+const PROMPT = 'Read MISSION.md in this folder and carry out the mission. Follow its rules of the run.'
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -125,6 +127,42 @@ async function resolveLocalId(id, baseUrl) {
   fail(`no model "${id}" at ${baseUrl}. ${served.length ? `It serves:\n${list(served)}` : 'It serves no models yet. Pull one first, e.g. ollama pull <name>'}`)
 }
 
+// MISSION.md is what the model is given: the task, the rules, what done means and how it is judged,
+// in one file. It is filled in from mission.template.md, so speakers can edit the wording there.
+function writeMission(task, dir) {
+  const meta = readJson(path.join(LAB, 'tasks', task, 'meta.json'), {})
+  const level = LADDER.find((t) => t.id === task)?.level ?? ''
+  const taskText = fs.readFileSync(path.join(LAB, 'tasks', task, 'task.md'), 'utf8').replace(/^# .*\n+/, '').trim()
+  const rules = fs.readFileSync(path.join(LAB, 'RULES.md'), 'utf8').trim()
+  const review = meta.custom === true
+  const done = review
+    ? 'A file called `review.json` exists in the repository root with your findings, and no source file was edited.'
+    : 'Everything the mission describes works as described. The code type-checks and builds. The tests that already exist still pass (you cannot run them, so read your changes with care). No tests were deleted, and no files were changed beyond what the mission needs.'
+  const judging = review
+    ? 'Your findings are compared with a hidden list of real defects. Each correct finding earns points and each false alarm costs points, so report only what you are confident about.'
+    : 'Hidden tests check your work: the mission itself (60 of 100 points), the behaviour that already worked (25), and hygiene (15): type-check, build, staying in scope and keeping the existing tests. Each part is curved, so almost right earns much less than right. The tests are not in this folder.'
+  const values = { title: meta.title ?? task, level, type: meta.type ?? '', task: taskText, rules, done, judging }
+  const text = fs.readFileSync(path.join(HERE, 'mission.template.md'), 'utf8').replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? '')
+  fs.writeFileSync(path.join(dir, 'MISSION.md'), `${text.trim()}\n`)
+  fs.rmSync(path.join(dir, 'TASK.md'), { force: true }) // one file to read, not two
+}
+
+// A fingerprint of every file in the folder except MISSION.md. If it has not changed when the run ends,
+// the model changed nothing, and the score is just the score of an untouched folder.
+function folderDigest(dir) {
+  const hash = crypto.createHash('sha1')
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (['node_modules', 'dist', '.git'].includes(entry.name)) continue
+      const full = path.join(current, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (entry.name !== 'MISSION.md') hash.update(`${path.relative(dir, full)}\0`).update(fs.readFileSync(full))
+    }
+  }
+  walk(dir)
+  return hash.digest('hex')
+}
+
 const results = () => readJson(path.join(root, 'results.json'), [])
 const saveResults = (rows) => {
   fs.mkdirSync(root, { recursive: true })
@@ -141,9 +179,10 @@ if (command === 'tasks') {
   if (fs.existsSync(dir) && !flag('again')) fail(`${dir} already exists. Use --again to start over, or pick another --model label.`)
   const prep = spawnSync(process.execPath, [LAB_CLI, 'prepare', taskId, dir], { encoding: 'utf8' })
   if (prep.status !== 0) fail(`could not prepare the task:\n${prep.stdout}${prep.stderr}`)
+  writeMission(taskId, dir)
   const usage = await keyUsage()
   fs.mkdirSync(path.dirname(state), { recursive: true })
-  fs.writeFileSync(state, JSON.stringify({ model, task: taskId, startedAt: Date.now(), usageStart: usage }, null, 2))
+  fs.writeFileSync(state, JSON.stringify({ model, task: taskId, startedAt: Date.now(), usageStart: usage, digest: folderDigest(dir) }, null, 2))
   console.log(`Folder ready: ${dir}`)
   console.log(usage === null ? 'Cost tracking: off (no readable OPENROUTER_API_KEY). Pass --cost when you finish.' : 'Cost tracking: on.')
   console.log(`\n1. Open the harness in that folder and choose the model "${model}".`)
@@ -183,6 +222,51 @@ if (command === 'tasks') {
   else if (dsh.status !== 0) console.log(`\nThe harness exited with code ${dsh.status}. Scoring what is in the folder anyway.`)
   const costOption = option('cost') ? ['--cost', option('cost')] : local ? ['--cost', '0'] : []
   process.exit(spawnSync(process.execPath, [...self, 'finish', ...common, ...costOption], inherit).status ?? 1)
+} else if (command === 'compare') {
+  // One cloud model and one local model on the same task, at the same time.
+  if (!taskId || !LADDER.some((t) => t.id === taskId)) fail(`give a task: ${LADDER.map((t) => t.id).join(', ')}`)
+  const cloud = option('cloud')
+  const localLabel = option('local')
+  const localName = option('local-id')
+  if (!cloud || !localLabel || !localName) fail('usage: compare <task> --cloud <label> --local <label> --local-id <model name> [--cloud-id vendor/model] [--base-url url] [--context n] [--timeout min] [--again]')
+  if (slug(cloud) === slug(localLabel)) fail('the cloud label and the local label must be different')
+  const baseUrl = option('base-url', process.env.LOCAL_BASE_URL ?? 'http://127.0.0.1:11434/v1')
+  const resolved = await resolveLocalId(localName, baseUrl) // fail now, before the cloud run starts and spends money
+  if (!(await ensureKey())) fail('no OpenRouter key. Export OPENROUTER_API_KEY, or run this in a terminal to be asked for it.')
+  const self = fileURLToPath(import.meta.url)
+  const shared = ['--root', root, ...(option('timeout') ? ['--timeout', option('timeout')] : []), ...(flag('again') ? ['--again'] : [])]
+  const jobs = [
+    { label: cloud, args: ['run', taskId, '--model', cloud, ...(option('cloud-id') ? ['--id', option('cloud-id')] : []), ...shared] },
+    { label: localLabel, args: ['run', taskId, '--model', localLabel, '--local', '--id', resolved, '--base-url', baseUrl, ...(option('context') ? ['--context', option('context')] : []), ...shared] },
+  ]
+  fs.mkdirSync(path.join(root, '.ladder'), { recursive: true })
+  const started = Date.now()
+  const elapsed = () => `${Math.floor((Date.now() - started) / 60000)}m${String(Math.floor(((Date.now() - started) % 60000) / 1000)).padStart(2, '0')}s`
+  console.log(`Running ${cloud} (cloud) and ${localLabel} (local) on ${taskId} at the same time.`)
+  console.log('They share this laptop: the local model can be slower while the cloud run and the scoring use the CPU. Compare scores and cost first, time second.\n')
+  const finished = new Set()
+  const logs = jobs.map((job) => path.join(root, '.ladder', `${taskId}__${slug(job.label)}.log`))
+  const children = jobs.map((job, i) => new Promise((resolve) => {
+    const fd = fs.openSync(logs[i], 'w')
+    const child = spawn(process.execPath, [self, ...job.args], { env: process.env, stdio: ['ignore', fd, fd] })
+    child.on('exit', (code) => { fs.closeSync(fd); finished.add(job.label); console.log(`[${elapsed()}] ${job.label} finished (exit ${code})`); resolve(code) })
+  }))
+  const ticker = setInterval(() => {
+    const waiting = jobs.filter((j) => !finished.has(j.label)).map((j) => j.label)
+    if (waiting.length) console.log(`[${elapsed()}] still running: ${waiting.join(', ')}`)
+  }, 30000)
+  const codes = await Promise.all(children)
+  clearInterval(ticker)
+  console.log('')
+  jobs.forEach((job, i) => {
+    const text = fs.readFileSync(logs[i], 'utf8')
+    const summary = text.split('\n').filter((l) => /^Time .*Score/.test(l)).pop()
+    console.log(`${job.label}: ${summary ?? `no score. See ${logs[i]}`}`)
+    if (codes[i] !== 0 && !summary) console.log(text.split('\n').slice(-12).join('\n'))
+  })
+  console.log('')
+  spawnSync(process.execPath, [self, 'table', '--root', root], { stdio: 'inherit' })
+  process.exit(codes.every((c) => c === 0) ? 0 : 1)
 } else if (command === 'finish') {
   const { model, run, dir, state } = requireTask()
   const started = readJson(state, null)
@@ -200,9 +284,11 @@ if (command === 'tasks') {
   console.log(score.stdout.trim())
   const report = readJson(path.join(BENCH, 'reports', `${name}.json`), null)
   if (!report) fail(`scoring failed:\n${score.stderr}`)
-  const row = { task: taskId, model, score: report.score, seconds, cost, date: new Date().toISOString() }
+  const changed = started.digest ? folderDigest(dir) !== started.digest : null // null: started with an older version
+  const row = { task: taskId, model, score: report.score, seconds, cost, changed, date: new Date().toISOString() }
   saveResults([...results().filter((r) => !(r.task === taskId && r.model === model)), row])
   console.log(`\nTime ${(seconds / 60).toFixed(1)} min   Cost ${cost === null ? 'unknown' : `$${cost.toFixed(4)}`}   Score ${report.score.toFixed(1)} / 100`)
+  if (changed === false) console.log('\nWARNING: the model changed no files. This score is the score of an untouched folder, so the run did not work.\nCommon causes: a model without tool-call support, a model that reasons aloud (a "thinking" model) on the local route, a context window that is too small, or a harness error. Read the log above.')
   if (cost === null) console.log('Cost is unknown. Re-run finish with --cost <usd> from the OpenRouter activity page.')
   if (cost === 0 && manual === undefined) console.log('Cost came out as $0. That is right for a local model. For a cloud model, check the OpenRouter activity page.')
 } else if (command === 'table') {
@@ -219,13 +305,14 @@ if (command === 'tasks') {
       const mine = rows.filter((r) => r.model === model)
       const cell = (t) => {
         const r = mine.find((x) => x.task === t.id)
-        return (r ? r.score.toFixed(1) : '-').padEnd(10)
+        return (r ? `${r.score.toFixed(1)}${r.changed === false ? '!' : ''}` : '-').padEnd(10)
       }
       const costs = mine.map((r) => r.cost)
       const total = costs.some((c) => c === null) ? '?' : `$${costs.reduce((s, c) => s + c, 0).toFixed(3)}`
       console.log(model.slice(0, 25).padEnd(26) + cols.map(cell).join('') + total.padEnd(10) + `${(mine.reduce((s, r) => s + r.seconds, 0) / 60).toFixed(1)}m`)
     }
     console.log('\n"-" = not run. Scores are out of 100. Cost "?" means a run has no cost recorded.')
+    if (rows.some((r) => r.changed === false)) console.log('"!" = the model changed no files, so that score is only the untouched-folder score. The run did not work.')
   }
 } else {
   console.log('commands: tasks | start <task> --model <label> | finish <task> --model <label> | table')
