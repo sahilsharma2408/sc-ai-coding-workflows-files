@@ -40,9 +40,31 @@ function findSessionFiles(dir, found = []) {
   return found
 }
 
+// The harness appends one zstd frame per write. Node 22 decodes only the first frame of a buffer, so cut the
+// buffer at each frame's magic number and decode the pieces. A cut that lands inside compressed data fails to
+// decode, so that piece is joined to the next one and tried again.
+const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd])
+function decompressFrames(buffer) {
+  const starts = []
+  for (let i = buffer.indexOf(ZSTD_MAGIC); i !== -1; i = buffer.indexOf(ZSTD_MAGIC, i + 1)) starts.push(i)
+  if (starts.length <= 1) return zlib.zstdDecompressSync(buffer).toString()
+  let text = ''
+  let from = starts[0]
+  for (let k = 1; k <= starts.length; k += 1) {
+    const to = starts[k] ?? buffer.length
+    try {
+      text += zlib.zstdDecompressSync(buffer.subarray(from, to)).toString()
+      from = to
+    } catch (err) {
+      if (to === buffer.length) throw err
+    }
+  }
+  return text
+}
+
 function readSession(file) {
   if (typeof zlib.zstdDecompressSync !== 'function') throw new Error('this needs Node 22.15 or newer to read the harness session logs')
-  const events = zlib.zstdDecompressSync(fs.readFileSync(file)).toString().split('\n').filter(Boolean).map((line) => JSON.parse(line))
+  const events = decompressFrames(fs.readFileSync(file)).split('\n').filter(Boolean).map((line) => JSON.parse(line))
   const head = events.find((e) => e.type === 'session')?.data ?? events[0] ?? {}
   return { file, id: head.id ?? path.basename(path.dirname(file)), depth: head.delegationDepth ?? 0, events }
 }
