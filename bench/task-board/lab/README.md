@@ -1,5 +1,7 @@
 # Task-type lab
 
+Running this as a workshop with the DeepSeek harness and OpenRouter? See [workshop/WORKSHOP.md](workshop/WORKSHOP.md).
+
 The first benchmark (`../README.md`) builds an app from a spec. That is one kind of work. Real work is also fixing a bug in one file, tracing a bug across layers, adding a feature that touches twenty files, renaming something everywhere, changing a function that other code depends on, and reviewing someone else's change. A model that is good at one is not always good at the others. This lab gives a model an **existing repository** and **one job per task type**, scores each job on its own, and puts the results side by side, so you can see which model or setup fits which kind of work.
 
 ## The tasks

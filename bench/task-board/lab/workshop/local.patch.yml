@@ -1,0 +1,22 @@
+# Harness overlay for a model on this laptop (Ollama, LM Studio, llama.cpp, or any OpenAI-compatible server).
+# Used by: node lab/workshop/ladder.mjs run <task> --model <label> --local --id <model-name-in-your-runtime>
+# Settings come from environment variables that ladder.mjs sets for you:
+#   DSH_MODEL        the model name exactly as your runtime lists it
+#   LOCAL_BASE_URL   the server address, ending in /v1 (default http://127.0.0.1:11434/v1 for Ollama)
+#   LOCAL_CONTEXT    the context window in tokens. Make the server's context length match it.
+#   LOCAL_API_KEY    any placeholder text. A local server ignores it, but the harness wants a value.
+- id: llm-pi-ai
+  config:
+    providers:
+      local:
+        displayName: Local model
+        apiKeyEnv: LOCAL_API_KEY
+        api: openai-completions
+        baseURL: !!js process.env.LOCAL_BASE_URL ?? 'http://127.0.0.1:11434/v1'
+        models:
+          - id: !!js process.env.DSH_MODEL ?? 'local-model'
+            contextWindow: !!js Number(process.env.LOCAL_CONTEXT ?? 32768)
+- id: agent-default-model
+  config:
+    provider: local
+    model: !!js process.env.DSH_MODEL ?? 'local-model'

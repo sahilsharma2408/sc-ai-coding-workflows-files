@@ -2,7 +2,7 @@
 
 A spec, a hidden test suite and a scorer for judging how well a model builds a small React and TypeScript app. Give a model `spec.md`, let it build the project, then score the result out of 100.
 
-It is separate from the workshop's Prompt Pantry app. Prompt Pantry is small enough to compare setups by eye. Task Board is big enough that sloppy output shows up in the numbers.
+Task Board is a small React app, big enough that sloppy output shows up in the numbers.
 
 ## What is in this folder
 

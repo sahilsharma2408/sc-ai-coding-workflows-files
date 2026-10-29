@@ -35,22 +35,20 @@ describe('parseVersion and nodeSupported', () => {
 });
 
 describe('parseArgs', () => {
-  test('defaults to ~/prompt-pantry', () => {
+  test('everything is off by default', () => {
     const opts = parseArgs([]);
-    assert.equal(opts.project, path.join(os.homedir(), 'prompt-pantry'));
-    assert.equal(opts.check, false);
+    assert.deepEqual([opts.check, opts.yes, opts.skipHarness, opts.skipBench], [false, false, false, false]);
   });
 
   test('reads every flag', () => {
-    const opts = parseArgs(['--project', '~/x', '--check', '-y', '--skip-harness', '--skip-demo', '--no-color']);
-    assert.equal(opts.project, path.join(os.homedir(), 'x'));
-    assert.deepEqual([opts.check, opts.yes, opts.skipHarness, opts.skipDemo, opts.color], [true, true, true, true, false]);
-    assert.equal(parseArgs(['--project=rel']).project, path.resolve('rel'));
+    const opts = parseArgs(['--check', '-y', '--skip-harness', '--skip-bench', '--no-color']);
+    assert.deepEqual([opts.check, opts.yes, opts.skipHarness, opts.skipBench, opts.color], [true, true, true, true, false]);
   });
 
-  test('rejects unknown flags and a missing --project value', () => {
+  test('rejects unknown flags, including the removed project and demo flags', () => {
     assert.throws(() => parseArgs(['--nope']), /Unknown option/);
-    assert.throws(() => parseArgs(['--project']), /needs a directory/);
+    assert.throws(() => parseArgs(['--project', 'x']), /Unknown option/);
+    assert.throws(() => parseArgs(['--skip-demo']), /Unknown option/);
   });
 });
 
@@ -104,6 +102,7 @@ function makeEnv({ claude, gitIdentity = true, extra = {} } = {}) {
     GIT_CONFIG_NOSYSTEM: '1',
     NO_COLOR: '1',
     WORKSHOP_OPENROUTER_API: apiBase,
+    WORKSHOP_LOCAL_URLS: '', // do not probe the real Ollama or LM Studio ports
     npm_config_cache: process.env.npm_config_cache ?? path.join(os.homedir(), '.npm'),
     ...extra,
   };
@@ -121,61 +120,9 @@ function runSetup(args, env) {
   });
 }
 
-const FAST = ['--skip-harness', '--skip-demo'];
+const FAST = ['--skip-harness', '--skip-bench'];
 
 describe('setup.mjs end to end (no network)', posixOnly, () => {
-  test('--yes creates the project with specs, .gitignore and one commit', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in' });
-    const project = path.join(home, 'prompt-pantry');
-    const { code, out } = await runSetup(['--yes', ...FAST, '--project', project], env);
-    assert.equal(code, 0, out);
-    assert.deepEqual(readdirSync(path.join(project, 'specs')).sort(), ['mission.md', 'roadmap.md', 'tech-stack.md']);
-    assert.match(readFileSync(path.join(project, '.gitignore'), 'utf8'), /\.env/);
-    const log = spawnSync('git', ['log', '--format=%s', 'main'], { cwd: project, encoding: 'utf8', env });
-    assert.equal(log.stdout.trim(), 'Add workshop specs');
-    assert.match(out, /Claude Code — 9\.9\.9/);
-    assert.match(out, /signed in \(claude\.ai\)/);
-    assert.match(out, /cd .*prompt-pantry/);
-  });
-
-  test('defaults the project to ~/prompt-pantry', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in' });
-    const { code, out } = await runSetup(['--yes', ...FAST], env);
-    assert.equal(code, 0, out);
-    assert.ok(existsSync(path.join(home, 'prompt-pantry', 'specs', 'roadmap.md')));
-  });
-
-  test('running twice leaves an existing project alone', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in' });
-    const project = path.join(home, 'pp');
-    await runSetup(['--yes', ...FAST, '--project', project], env);
-    const { code, out } = await runSetup(['--yes', ...FAST, '--project', project], env);
-    assert.equal(code, 0, out);
-    assert.match(out, /already set up/);
-    const count = spawnSync('git', ['rev-list', '--count', 'HEAD'], { cwd: project, encoding: 'utf8', env });
-    assert.equal(count.stdout.trim(), '1');
-  });
-
-  test('never touches a non-empty folder', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in' });
-    const project = path.join(home, 'busy');
-    mkdirSync(project);
-    writeFileSync(path.join(project, 'mine.txt'), 'keep me');
-    const { code, out } = await runSetup(['--yes', ...FAST, '--project', project], env);
-    assert.equal(code, 0, out);
-    assert.match(out, /exists and is not empty, left untouched/);
-    assert.deepEqual(readdirSync(project), ['mine.txt']);
-  });
-
-  test('--check creates nothing', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in' });
-    const project = path.join(home, 'pp');
-    const { code, out } = await runSetup(['--check', ...FAST, '--project', project], env);
-    assert.equal(code, 0, out);
-    assert.match(out, /not created yet/);
-    assert.ok(!existsSync(project));
-  });
-
   test('missing Claude Code is a warning that names other frontier agents', async () => {
     const { env } = makeEnv();
     const { code, out } = await runSetup(['--check', ...FAST], env);
@@ -209,14 +156,53 @@ describe('setup.mjs end to end (no network)', posixOnly, () => {
     ];
     for (const [key, expected] of cases) {
       const { home, env } = makeEnv({ claude: 'logged-in', extra: { OPENROUTER_API_KEY: key } });
-      const project = path.join(home, 'pp');
-      const { code, out } = await runSetup(['--yes', ...FAST, '--project', project], env);
+      const { code, out } = await runSetup(['--yes', ...FAST], env);
       assert.equal(code, 0, out);
       assert.match(out, expected);
       assert.ok(!out.includes(key), `key ${key} leaked into output`);
       const grep = spawnSync('grep', ['-r', key, home], { encoding: 'utf8' });
       assert.equal(grep.stdout, '', `key ${key} written to disk`);
     }
+  });
+
+  test('OPENROUTER_KEY is accepted as the key, and never printed', async () => {
+    const { env } = makeEnv({ claude: 'logged-in', extra: { OPENROUTER_KEY: 'sk-or-good' } });
+    const { code, out } = await runSetup(['--check', ...FAST], env);
+    assert.equal(code, 0, out);
+    assert.match(out, /✔ OpenRouter key — valid, \$9\.50 left on this key/);
+    assert.doesNotMatch(out, /export OPENROUTER_API_KEY/);
+    assert.ok(!out.includes('sk-or-good'));
+  });
+
+  test('finds a local model server and lists its models', async () => {
+    const local = createServer((req, res) => {
+      res.setHeader('content-type', 'application/json');
+      res.end(req.url === '/v1/models' ? JSON.stringify({ data: [{ id: 'qwen3-coder:30b' }, { id: 'llama3.1:8b' }] }) : '{}');
+    });
+    await new Promise((resolve) => local.listen(0, '127.0.0.1', resolve));
+    try {
+      const base = `http://127.0.0.1:${local.address().port}/v1`;
+      const { env } = makeEnv({ claude: 'logged-in', extra: { WORKSHOP_LOCAL_URLS: base } });
+      const { code, out } = await runSetup(['--check', ...FAST], env);
+      assert.equal(code, 0, out);
+      assert.match(out, /✔ Local server at http:\/\/127\.0\.0\.1:\d+\/v1 — qwen3-coder:30b, llama3\.1:8b/);
+      assert.match(out, /ladder\.mjs run <task> --model <label> --local/);
+    } finally {
+      local.close();
+    }
+  });
+
+  test('no local model server is information, not a problem', async () => {
+    const { env } = makeEnv({ claude: 'logged-in' });
+    const { code, out } = await runSetup(['--check', ...FAST], env);
+    assert.equal(code, 0, out);
+    assert.match(out, /• Local model server — none found/);
+  });
+
+  test('--skip-bench leaves the ladder scorer alone', async () => {
+    const { env } = makeEnv({ claude: 'logged-in' });
+    const { out } = await runSetup(['--check', ...FAST], env);
+    assert.match(out, /• Model ladder scorer — skipped \(--skip-bench\)/);
   });
 
   test('unreachable OpenRouter is a warning, not a failure', async () => {
@@ -226,21 +212,12 @@ describe('setup.mjs end to end (no network)', posixOnly, () => {
     assert.match(out, /! OpenRouter reachable — could not reach openrouter\.ai/);
   });
 
-  test('missing Git identity: project is created, commit failure is explained', async () => {
-    const { home, env } = makeEnv({ claude: 'logged-in', gitIdentity: false,
-      extra: { GIT_AUTHOR_NAME: '', GIT_COMMITTER_NAME: '', EMAIL: '', GIT_CONFIG_GLOBAL: path.join(os.tmpdir(), 'none.gitconfig') } });
-    const project = path.join(home, 'pp');
-    const { out } = await runSetup(['--yes', ...FAST, '--project', project], env);
-    assert.match(out, /! Git identity — user\.name or user\.email not set/);
-    assert.ok(existsSync(path.join(project, 'specs', 'mission.md')));
-  });
-
   test('a harness already listening on 3080 is reported, not restarted', async (t) => {
     const server = await occupy(3080, fakeHarness());
     if (!server) return t.skip('port 3080 is busy on this machine');
     try {
       const { env } = makeEnv({ claude: 'logged-in' });
-      const { code, out } = await runSetup(['--check', '--skip-demo'], env);
+      const { code, out } = await runSetup(['--check', '--skip-bench'], env);
       assert.equal(code, 0, out);
       assert.match(out, /already running on 127\.0\.0\.1:3080/);
       assert.doesNotMatch(out, /Downloading/);
@@ -264,7 +241,7 @@ const port = Number(args[args.indexOf('--port') + 1]);
 require('node:http').createServer((req, res) => { res.statusCode = 401; res.end('dsh web authentication required'); }).listen(port, '127.0.0.1');
 `);
       chmodSync(path.join(home, 'stub-bin', 'npx'), 0o755);
-      const { code, out } = await runSetup(['--check', '--skip-demo'], env);
+      const { code, out } = await runSetup(['--check', '--skip-bench'], env);
       assert.equal(code, 0, out);
       assert.match(out, /Port 3080 is used by another app, so the harness will use port 3081/);
       assert.match(out, /started on 127\.0\.0\.1:3081, then stopped again/);
@@ -280,7 +257,7 @@ require('node:http').createServer((req, res) => { res.statusCode = 401; res.end(
     try {
       if (servers.includes(null)) return t.skip('ports 3080-3089 are busy on this machine');
       const { env } = makeEnv({ claude: 'logged-in' });
-      const { code, out } = await runSetup(['--check', '--skip-demo'], env);
+      const { code, out } = await runSetup(['--check', '--skip-bench'], env);
       assert.equal(code, 1, out);
       assert.match(out, /ports 3080-3089 are all used by other apps/);
       assert.match(out, /rerun: node setup\.mjs/);

@@ -2,7 +2,7 @@
 // Workshop setup for "Inference at the Edge of Your IDE".
 //
 // Checks your machine, pre-downloads the DeepSeek harness, checks OpenRouter,
-// runs the demo app's tests and creates your workshop project folder.
+// installs the model-ladder scorer and looks for a local model server.
 // Uses only Node built-ins, so it runs before anything else is installed.
 //
 //   node setup.mjs                 interactive setup
@@ -13,7 +13,7 @@
 // This script never writes it to disk.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,42 +31,35 @@ const DEEPSEEK_MODELS = ['deepseek/deepseek-v4-pro', 'deepseek/deepseek-v4-flash
 const HELP = `Usage: node setup.mjs [options]
 
 Options:
-  --project <dir>   Where to create your workshop project (default: ~/prompt-pantry)
   --check           Check only. Create nothing, install nothing, ask nothing
   --yes, -y         Accept the default answer to every question
   --skip-harness    Skip downloading and starting the DeepSeek harness
-  --skip-demo       Skip installing and testing the demo app
+  --skip-bench      Skip installing the scorer for the model ladder (bench/task-board, about 170 MB)
   --no-color        Plain output
   --help, -h        Show this help
 
 Environment:
-  OPENROUTER_API_KEY   Checked without a prompt if set. Never written to disk.
+  OPENROUTER_API_KEY   Checked without a prompt if set (OPENROUTER_KEY works too). If neither is
+                       set, you are asked for one. It is never written to disk.
 `;
 
 // ---------- arguments ----------
 
 export function parseArgs(argv) {
   const opts = {
-    project: path.join(os.homedir(), 'prompt-pantry'),
     check: false,
     yes: false,
     skipHarness: false,
-    skipDemo: false,
+    skipBench: false,
     color: process.stdout.isTTY && !process.env.NO_COLOR,
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--project') {
-      const value = argv[++i];
-      if (!value) throw new Error('--project needs a directory');
-      opts.project = path.resolve(value.replace(/^~(?=$|[\\/])/, os.homedir()));
-    } else if (arg.startsWith('--project=')) {
-      opts.project = path.resolve(arg.slice(10).replace(/^~(?=$|[\\/])/, os.homedir()));
-    } else if (arg === '--check') opts.check = true;
+    if (arg === '--check') opts.check = true;
     else if (arg === '--yes' || arg === '-y') opts.yes = true;
     else if (arg === '--skip-harness') opts.skipHarness = true;
-    else if (arg === '--skip-demo') opts.skipDemo = true;
+    else if (arg === '--skip-bench') opts.skipBench = true;
     else if (arg === '--no-color') opts.color = false;
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else throw new Error(`Unknown option: ${arg}`);
@@ -286,11 +279,11 @@ function checkSystem() {
   const appleSilicon = process.platform === 'darwin' && process.arch === 'arm64';
   record('info', `${os.type()} ${os.release()} (${process.arch})`, `${cpu}, ${memGb} GB RAM`);
   if (appleSilicon && memGb >= 16) {
-    record('ok', 'Hardware for the local stages', 'Apple silicon with 16 GB or more');
+    record('ok', 'Hardware for local models', 'Apple silicon with 16 GB or more');
   } else {
-    record('warn', 'Hardware for the local stages', `${memGb} GB RAM${appleSilicon ? ', Apple silicon' : ''}`,
-      'Stages 3 and 4 run models on your laptop. Apple silicon or a GPU with 16 GB+ of\n' +
-      'memory works best. You can still do Stages 1 and 2, which run in the cloud.');
+    record('warn', 'Hardware for local models', `${memGb} GB RAM${appleSilicon ? ', Apple silicon' : ''}`,
+      'Running models on your laptop works best with Apple silicon or a GPU with 16 GB+\n' +
+      'of memory. You can still compare the cloud models.');
   }
 }
 
@@ -364,8 +357,8 @@ async function checkClaude(opts) {
     } else {
       record('warn', 'Claude Code', 'not installed',
         `Install it with: ${installCmd}\n` +
-        'Stage 1 uses Claude Code. If you use another agent with a frontier model\n' +
-        '(Codex, Cursor, Gemini CLI...), you can follow along with that instead.');
+        'Claude Code is the frontier agent we compare against. If you use\n' +
+        'another agent with a frontier model (Codex, Cursor, Gemini CLI...), you can follow along with that instead.');
       return;
     }
   }
@@ -383,7 +376,7 @@ async function checkClaude(opts) {
   } else if (status) {
     record('warn', 'Claude Code sign-in', 'not signed in',
       'Run `claude` and sign in with a paid Claude plan, or set ANTHROPIC_API_KEY.\n' +
-      'Claude Code needs paid access for Stage 1.');
+      'Claude Code needs paid access.');
   } else {
     record('warn', 'Claude Code sign-in', 'could not check',
       'Run `claude` once and make sure it answers a message.');
@@ -507,7 +500,7 @@ async function openHarness(opts, harness) {
   console.log(bold('Opening the DeepSeek web UI...\n'));
   const child = spawn('npx', ['-y', HARNESS_PACKAGE, 'web', '--port', String(port)], {
     shell: IS_WINDOWS,
-    cwd: existsSync(opts.project) ? opts.project : os.homedir(),
+    cwd: os.homedir(),
     detached: true,     // its own process group, so it outlives this script
     stdio: 'ignore',
     windowsHide: true,
@@ -535,15 +528,18 @@ async function checkOpenRouter(opts) {
     return;
   }
 
-  let key = process.env.OPENROUTER_API_KEY?.trim() ?? '';
+  // OPENROUTER_API_KEY is the name the harness and the ladder read; OPENROUTER_KEY is accepted too.
+  let key = (process.env.OPENROUTER_API_KEY ?? process.env.OPENROUTER_KEY)?.trim() ?? '';
+  const fromEnvironment = key !== '';
   if (!key && canAsk(opts)) {
-    console.log(dim('  Have your own OpenRouter key? Paste it to check it (input is hidden, nothing is saved).'));
+    console.log(dim('  No OpenRouter key is exported in this terminal.'));
+    console.log(dim('  Paste your own key to check it (input is hidden, nothing is saved).'));
     console.log(dim('  No key? Press Enter. We provide a workshop key with limited credit at the session.'));
     key = await askSecret(opts, 'OpenRouter API key:');
   }
   if (!key) {
     record('info', 'OpenRouter key', 'not provided',
-      'That is fine: we provide a workshop key for the DeepSeek stages.\n' +
+      'That is fine: we provide a workshop key for the DeepSeek models.\n' +
       'Want your own? https://openrouter.ai/keys, with about $10 of credit.');
     return;
   }
@@ -556,7 +552,9 @@ async function checkOpenRouter(opts) {
       const low = remaining !== null && remaining < 2;
       record(low ? 'warn' : 'ok', 'OpenRouter key', `valid, ${credit}`,
         (low ? 'Add credit: about $10 covers the whole workshop.\n' : '') +
-        'Paste it into the harness under Settings → Models at the workshop.\nNever commit it to Git.');
+        (fromEnvironment ? '' : 'This script does not keep it. In the terminal you will run the ladder from, export it first:\n' +
+          '  export OPENROUTER_API_KEY=your-key-here        (PowerShell: $env:OPENROUTER_API_KEY = "your-key-here")\n') +
+        'Never commit it to Git.');
     } else {
       record('warn', 'OpenRouter key', `rejected (HTTP ${check.status})`,
         'Create a new one at https://openrouter.ai/keys, or use the workshop key we provide.');
@@ -566,85 +564,67 @@ async function checkOpenRouter(opts) {
   }
 }
 
-// Installs and tests the finished demo. Also fills the npm cache with the
-// workshop's packages, so Stage 0 installs fast on conference Wi-Fi.
-function checkDemo(opts) {
-  section('Demo app (React, Vite, Vitest)');
-  if (opts.skipDemo) {
-    record('info', 'Demo app', 'skipped (--skip-demo)');
+// Installs the scorer for the model ladder (bench/task-board). In check mode it only looks.
+function checkBench(opts) {
+  section('Model ladder (scores the models you compare)');
+  if (opts.skipBench) {
+    record('info', 'Model ladder scorer', 'skipped (--skip-bench)');
     return;
   }
-  const demoDir = path.join(REPO_DIR, 'demo');
-  if (!existsSync(path.join(demoDir, 'package.json'))) {
-    record('fail', 'Demo app', `not found at ${demoDir}`, 'Run this script from the cloned workshop repo.');
+  const benchDir = path.join(REPO_DIR, 'bench', 'task-board');
+  if (!existsSync(path.join(benchDir, 'package.json'))) {
+    record('fail', 'Model ladder scorer', `not found at ${benchDir}`, 'Run this script from the cloned workshop repo.');
     return;
   }
-  console.log(dim('  Installing the demo app dependencies...'));
-  const install = run('npm', ['ci', '--no-audit', '--no-fund'], { cwd: demoDir, timeout: 600_000 });
-  if (!install.ok) {
-    record('fail', 'Demo app install', `npm ci failed (exit ${install.code})`,
-      lastLines(install.stderr || install.stdout));
-    return;
+  const installed = () => existsSync(path.join(benchDir, 'node_modules', 'vitest'));
+  if (!installed() && !opts.check) {
+    console.log(dim('  Installing the scorer dependencies (about 170 MB)...'));
+    const install = run('npm', ['ci', '--no-audit', '--no-fund'], { cwd: benchDir, timeout: 600_000 });
+    if (!install.ok) {
+      record('fail', 'Model ladder scorer', `npm ci failed (exit ${install.code})`, lastLines(install.stderr || install.stdout));
+      return;
+    }
   }
-  const test = run('npm', ['test'], { cwd: demoDir, timeout: 300_000 });
-  const summary = /Tests\s+(.*)/.exec(stripAnsi(test.stdout))?.[1]?.trim() ?? '';
-  if (test.ok) record('ok', 'Demo app tests', summary || 'passed');
-  else record('fail', 'Demo app tests', summary || `npm test failed (exit ${test.code})`,
-    lastLines(test.stdout || test.stderr));
+  if (installed()) record('ok', 'Model ladder scorer', 'installed');
+  else record('warn', 'Model ladder scorer', 'not installed yet', `Run: cd bench/task-board && npm ci`);
+}
+
+// Looks for a model server already running on this laptop. Read-only, and only ever asks 127.0.0.1.
+// WORKSHOP_LOCAL_URLS (comma-separated, ending in /v1) replaces the usual addresses, for tests.
+const LOCAL_SERVERS = [
+  ['Ollama', 'http://127.0.0.1:11434/v1'],
+  ['LM Studio', 'http://127.0.0.1:1234/v1'],
+  ['llama.cpp', 'http://127.0.0.1:8080/v1'],
+];
+
+async function checkLocalModels() {
+  section('Local models (only needed for the local comparison)');
+  const servers = process.env.WORKSHOP_LOCAL_URLS === undefined
+    ? LOCAL_SERVERS
+    : process.env.WORKSHOP_LOCAL_URLS.split(',').filter(Boolean).map((url) => ['Local server', url]);
+  let found = 0;
+  for (const [name, base] of servers) {
+    try {
+      const response = await fetch(`${base}/models`, { signal: AbortSignal.timeout(2000) });
+      const ids = ((await response.json().catch(() => null))?.data ?? []).map((m) => m.id).filter(Boolean);
+      if (!response.ok) continue;
+      found += 1;
+      const shown = ids.slice(0, 5).join(', ') + (ids.length > 5 ? `, and ${ids.length - 5} more` : '');
+      record('ok', `${name} at ${base}`, ids.length ? shown : 'running, no models loaded yet');
+    } catch {
+      // nothing listening here
+    }
+  }
+  if (found === 0) {
+    record('info', 'Local model server', 'none found',
+      'Start Ollama, LM Studio or llama.cpp with a model that supports tool calls. See harness/README.md.');
+  } else {
+    console.log(dim('      Compare it with: node bench/task-board/lab/workshop/ladder.mjs run <task> --model <label> --local --id <model name>'));
+  }
 }
 
 const stripAnsi = (text) => text.replace(/\x1b\[[0-9;]*m/g, '');
 const lastLines = (text, n = 8) => stripAnsi(text).split('\n').slice(-n).map((l) => dim(l)).join('\n');
-
-// Creates the project folder from Stage 0 of prompts.md: specs plus a first commit.
-async function createProject(opts, gitOk) {
-  section('Your workshop project');
-  const specsSource = path.join(REPO_DIR, 'starter', 'specs');
-  if (!existsSync(specsSource)) {
-    record('fail', 'Workshop specs', `not found at ${specsSource}`, 'Run this script from the cloned workshop repo.');
-    return;
-  }
-  const dir = opts.project;
-  const entries = readdirSafe(dir);
-  if (existsSync(path.join(dir, 'specs', 'roadmap.md'))) {
-    record('ok', 'Project folder', `already set up at ${dir}`);
-    return;
-  }
-  if (opts.check) {
-    record('info', 'Project folder', `not created yet (would be ${dir})`);
-    return;
-  }
-  if (entries.length > 0) {
-    record('warn', 'Project folder', `${dir} exists and is not empty, left untouched`,
-      'Pick another folder with: node setup.mjs --project <dir>');
-    return;
-  }
-  if (!(await confirm(opts, `Create your workshop project at ${dir}?`, true))) {
-    record('info', 'Project folder', 'skipped', 'Create it later with: node setup.mjs --project <dir>');
-    return;
-  }
-
-  mkdirSync(dir, { recursive: true });
-  cpSync(specsSource, path.join(dir, 'specs'), { recursive: true });
-  cpSync(path.join(REPO_DIR, '.gitignore'), path.join(dir, '.gitignore'));
-  writeFileSync(path.join(dir, 'README.md'),
-    '# Prompt Pantry\n\nMy workshop project. Specs are in `specs/`; prompts are in the workshop repo\'s `prompts.md`.\n');
-
-  if (!gitOk) {
-    record('warn', 'Project folder', `created at ${dir}, but not a Git repo (Git is missing)`);
-    return;
-  }
-  run('git', ['init', '-q'], { cwd: dir });
-  run('git', ['symbolic-ref', 'HEAD', 'refs/heads/main'], { cwd: dir });
-  run('git', ['add', '-A'], { cwd: dir });
-  const commit = run('git', ['commit', '-q', '-m', 'Add workshop specs'], { cwd: dir });
-  if (commit.ok) {
-    record('ok', 'Project folder', `created at ${dir} with specs/ and a first commit`);
-  } else {
-    record('warn', 'Project folder', `created at ${dir}, but the first commit failed`,
-      'Set your Git identity (see above), then run: git add -A && git commit -m "Add workshop specs"');
-  }
-}
 
 // ---------- main ----------
 
@@ -662,10 +642,11 @@ function printSummary(opts) {
   console.log('  • DeepSeek models run through OpenRouter. Your own key (about $10 of credit) is best.');
   console.log('    No key? We provide one with limited credit. Ask the speakers at the start.');
 
-  if (!opts.check && existsSync(path.join(opts.project, 'specs'))) {
-    console.log(`\n${bold('At the workshop')}`);
-    console.log(`  cd ${opts.project}`);
-    console.log('  claude                       # then run the Stage 0 prompt from prompts.md');
+  if (!opts.check) {
+    console.log(`\n${bold('Try the model ladder')}`);
+    console.log('  export OPENROUTER_API_KEY=your-key-here');
+    console.log('  node bench/task-board/lab/workshop/ladder.mjs run fix-date-file --model flash');
+    console.log('  node bench/task-board/lab/workshop/ladder.mjs table');
   }
   console.log('');
   return fails.length === 0 ? 0 : 1;
@@ -686,17 +667,17 @@ async function main() {
   useColor = opts.color;
 
   console.log(bold('Inference at the Edge of Your IDE: workshop setup'));
-  console.log(dim(opts.check ? 'Check mode: nothing will be created or installed.' : `Project folder: ${opts.project}`));
+  if (opts.check) console.log(dim('Check mode: nothing will be installed.'));
 
   checkSystem();
-  const gitOk = checkGit();
+  checkGit();
   const nodeOk = checkNode();
   checkEditor();
   await checkClaude(opts);
   const harness = nodeOk ? await checkHarness(opts) : undefined;
   await checkOpenRouter(opts);
-  if (nodeOk) checkDemo(opts);
-  await createProject(opts, gitOk);
+  if (nodeOk) checkBench(opts);
+  await checkLocalModels();
   const code = printSummary(opts);
   await openHarness(opts, harness);
   return code;

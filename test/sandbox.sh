@@ -6,7 +6,7 @@
 #
 # Each container gets a copy of the repo (the host checkout is mounted read-only),
 # runs the unit and integration tests, then a real end-to-end setup: downloading and
-# starting the DeepSeek harness, npm ci and the demo tests, and the OpenRouter checks.
+# starting the DeepSeek harness, installing the ladder scorer, and the OpenRouter checks.
 # Needs Docker and internet access.
 set -euo pipefail
 
@@ -17,7 +17,7 @@ FAILED=()
 in_container() {
   local image="$1" script="$2"
   docker run --rm -v "$REPO:/repo:ro" "$image" bash -euo pipefail -c "
-    cp -r /repo /work && rm -rf /work/demo/node_modules && cd /work
+    cp -r /repo /work && rm -rf /work/bench/task-board/node_modules && cd /work
     $script"
 }
 
@@ -28,10 +28,9 @@ for v in "${VERSIONS[@]}"; do
     node --test --test-reporter=tap test/setup.test.mjs > /tmp/unit.log 2>&1 || { cat /tmp/unit.log; exit 1; }
     grep -E "^# (tests|pass|fail)" /tmp/unit.log
 
-    # A participant with no Git identity yet: specs are copied, the commit is explained.
-    node setup.mjs --yes --no-color --skip-harness --skip-demo --project /root/no-identity > /tmp/no-id.log || true
+    # A participant with no Git identity yet: it is flagged, and setup still finishes.
+    node setup.mjs --yes --no-color --skip-harness --skip-bench > /tmp/no-id.log || true
     grep -q "Git identity — user.name or user.email not set" /tmp/no-id.log
-    test -f /root/no-identity/specs/roadmap.md
 
     # The real run.
     git config --global user.name "Sandbox Participant"
@@ -44,15 +43,14 @@ for v in "${VERSIONS[@]}"; do
     test "$code" -eq 0
     grep -q "✔ DeepSeek harness web UI — started on 127.0.0.1:3080" /tmp/setup.log
     grep -q "✔ DeepSeek models on OpenRouter" /tmp/setup.log
-    grep -q "✔ Demo app tests — 10 passed" /tmp/setup.log
+    grep -q "✔ Model ladder scorer — installed" /tmp/setup.log
     grep -q "! Claude Code — not installed" /tmp/setup.log
-    test "$(git -C /root/prompt-pantry log --format=%s)" = "Add workshop specs"
     # The harness was stopped again.
     sleep 2
     if (exec 3<>/dev/tcp/127.0.0.1/3080) 2>/dev/null; then echo "harness still running"; exit 1; fi
-    # A second run is safe.
-    node setup.mjs --yes --no-color --skip-harness --skip-demo > /tmp/again.log
-    grep -q "already set up" /tmp/again.log
+    # A second run is safe, and does not reinstall the scorer.
+    node setup.mjs --yes --no-color --skip-harness > /tmp/again.log
+    grep -q "✔ Model ladder scorer — installed" /tmp/again.log
     echo "SANDBOX OK"
   '; then echo "Node $v: passed"; else FAILED+=("$v"); echo "Node $v: FAILED"; fi
 done
@@ -61,7 +59,7 @@ if [ "$#" -eq 0 ]; then
   for old in 18 20; do
     echo "=== Node $old (must be rejected) ==="
     if in_container "node:$old-bookworm" "
-      set +e; node setup.mjs --check --no-color --skip-harness --skip-demo > /tmp/old.log 2>&1; code=\$?; set -e
+      set +e; node setup.mjs --check --no-color --skip-harness --skip-bench > /tmp/old.log 2>&1; code=\$?; set -e
       cat /tmp/old.log
       test \"\$code\" -eq 1
       grep -q '✖ Node.js — v$old' /tmp/old.log

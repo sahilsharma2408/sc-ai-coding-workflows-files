@@ -1,0 +1,18 @@
+# Harness overlay for the model ladder: adds OpenRouter and picks the model from DSH_MODEL.
+# Used by: node lab/workshop/ladder.mjs run <task> --model <label>
+# The key is read from the environment variable OPENROUTER_API_KEY. It is never written here.
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        api: openai-completions
+        baseURL: https://openrouter.ai/api/v1
+        models:
+          - id: deepseek/deepseek-v4-flash
+          - id: deepseek/deepseek-v4-pro
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: !!js process.env.DSH_MODEL ?? 'deepseek/deepseek-v4-flash'

@@ -2,24 +2,18 @@
 
 Companion files for the workshop *Inference at the Edge of Your IDE: Agentic React Development from Cloud LLMs to On-Device Models*.
 
-Across the workshop you build the same small React app, Prompt Pantry, in four different AI coding setups: Claude Code in the cloud, the DeepSeek harness with OpenRouter models, a hybrid with a local subagent, and fully local. Keeping the app the same lets you compare what each setup gives you and what it asks of you.
-
-This workshop builds on the DeepLearning.AI course *AI Coding Workflows: From Cloud to Local*. See [Credits](#credits) for what came from the course and what changed.
+In the workshop you run the same coding jobs, from easy to hard, with different models in the DeepSeek harness: cloud models through OpenRouter and a model on your own laptop. Each result is scored out of 100, with the time and cost beside it. The point is to see which model is good enough for which job, when a cheaper model is the better value, and when you should use a local model because the code is private or the network is not there.
 
 ## How to use this repo
 
-You do not work inside this repo. Create a project folder of your own, copy `starter/specs/` into it as `specs/`, and follow [prompts.md](prompts.md) from Stage 0.
+Run `node setup.mjs` at home (see [Before you arrive](#before-you-arrive)). At the workshop, follow [bench/task-board/lab/workshop/WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md).
 
 | Path | Purpose |
 |---|---|
-| `starter/specs/mission.md` | Describes the app, its purpose and the experience it should provide |
-| `starter/specs/tech-stack.md` | Records the required technologies and constraints |
-| `starter/specs/roadmap.md` | Breaks the app into three phases that coding agents can plan and implement |
-| `prompts.md` | Every prompt used in the workshop, with notes on when to run each one |
-| `demo/` | A finished Prompt Pantry built from the specs (all three phases), for reference and for the live demo |
 | `setup.mjs` | Pre-workshop setup and check script (see [Before you arrive](#before-you-arrive)) |
 | `test/` | Tests for `setup.mjs`, including Docker sandbox runs |
-| `bench/task-board/` | Benchmarks for coding models: a build-from-spec benchmark and a task-type lab (single-file fix, multi-file debug, cross-file feature, migration, contract change, code review) with hidden tests, scorers and a token and cost audit. Runs Claude agents or any OpenAI-compatible model (free-tier or self-hosted). See its [README](bench/task-board/README.md) and the [lab README](bench/task-board/lab/README.md) |
+| `bench/task-board/` | Benchmarks for coding models: a build-from-spec benchmark and a task-type lab (single-file fix, multi-file debug, cross-file feature, migration, contract change, code review) with hidden tests, scorers and a token and cost audit. See its [README](bench/task-board/README.md) and the [lab README](bench/task-board/lab/README.md) |
+| `bench/task-board/lab/workshop/` | The workshop benchmark: one mission given to seven setups (Claude Code and the DeepSeek harness, cloud and local models, with and without sub-agents), run one at a time or in parallel, with an HTML report of score, cost, time and tokens. Start with [WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md), the mission in [mission.md](bench/task-board/lab/workshop/mission.md), and the talk plan in [PRESENTING.md](bench/task-board/lab/workshop/PRESENTING.md) |
 | `harness/README.md` | Draft notes for connecting the DeepSeek harness to OpenRouter and local models, and for subagent models |
 | `.gitignore` | Excludes `node_modules`, build output, local env files and editor files |
 
@@ -45,21 +39,29 @@ The script works on macOS, Linux and Windows. It:
 - checks Git, your Git identity, Node.js, npm and your editor
 - checks Claude Code is installed and signed in, and offers to install it
 - downloads the DeepSeek harness (about 900 MB, a few minutes), starts its web UI on `127.0.0.1:3080` (or the next free port up to 3089, if another app uses it) to check it works, then stops it
-- checks that the DeepSeek models are on OpenRouter and, if you have your own key, that it works and has credit (the key is never saved or printed)
-- installs the demo app and runs its tests, which also caches the packages you'll need in Stage 0
-- creates your workshop project at `~/prompt-pantry` with `specs/` and a first commit
-- says whether your laptop can handle the local stages
+- checks that the DeepSeek models are on OpenRouter and checks your key. It reads `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) from your terminal and **asks for one if neither is set**. The key is never saved or printed
+- installs the scorer for the model ladder in `bench/task-board` (about 170 MB, skip with `--skip-bench`)
+- looks for a model server already running on your laptop (Ollama, LM Studio or llama.cpp) and lists its models
+- says whether your laptop can handle local models
 
-It ends with a summary, then opens the DeepSeek web UI in your browser and leaves it running (not with `--check`). Fix anything marked ✖ before the workshop. Items marked ! are worth a look but won't block you. Run `node setup.mjs --check` on the day to recheck without changing anything, and `node setup.mjs --help` for all options (for example `--project <dir>`).
+It ends with a summary, then opens the DeepSeek web UI in your browser and leaves it running (not with `--check`). Fix anything marked ✖ before the workshop. Items marked ! are worth a look but won't block you. Run `node setup.mjs --check` on the day to recheck without changing anything, and `node setup.mjs --help` for all options.
 
 ### 3. Models and keys
 
 | What | Who provides it |
 |---|---|
-| **A frontier coding agent**: Claude Code with a paid Claude plan or Anthropic API key | **You.** We demo Stage 1 in Claude Code. If you already pay for another frontier-model agent (Codex, Cursor, Gemini CLI and so on), you can follow Stage 1 with that instead. We can't provide this access. |
-| **DeepSeek V4 Pro and V4 Flash on OpenRouter**, for Stages 2 and 3 | **We do, if you need it.** Bring your own [OpenRouter key](https://openrouter.ai/keys) with about $10 of credit if you can, which covers the whole workshop. Without one, ask the speakers at the start of the session for a workshop key with limited credit. |
+| **DeepSeek V4 Pro and V4 Flash on OpenRouter**, the cloud models in the comparison | **We do, if you need it.** Bring your own [OpenRouter key](https://openrouter.ai/keys) with about $10 of credit if you can, which covers the whole workshop. Without one, ask the speakers at the start of the session for a workshop key with limited credit. |
+| **A model on your laptop** (optional) | **You.** Run Ollama, LM Studio or llama.cpp with a model that supports tool calls. See [WORKSHOP.md](bench/task-board/lab/workshop/WORKSHOP.md#comparing-with-a-model-on-your-own-laptop) |
+| **A frontier coding agent** (optional): Claude Code with a paid plan or an API key | **You.** It is a different harness from the one in the ladder, so treat it as a side comparison. We can't provide this access. |
 
-Copy an OpenRouter key when you create it, because you can't view it again. Never commit it to Git.
+The ladder reads your key from the terminal it runs in, so export it first:
+
+```bash
+export OPENROUTER_API_KEY=your-key-here        # macOS / Linux
+$env:OPENROUTER_API_KEY = "your-key-here"      # Windows PowerShell
+```
+
+If you forget, the ladder asks for it (hidden, not saved). Copy an OpenRouter key when you create it, because you can't view it again. Never commit it to Git.
 
 ### 4. Also install
 
@@ -68,7 +70,7 @@ Copy an OpenRouter key when you create it, because you can't view it again. Neve
 
 ### Hardware
 
-Stages 3 and 4 run models on your own laptop. Apple silicon or a GPU with 16 GB+ of memory works best. On a smaller machine you can still do Stages 1 and 2, which run in the cloud.
+Running a model on your own laptop works best with Apple silicon or a GPU with 16 GB+ of memory. On a smaller machine you can still compare the cloud models.
 
 ### Helpful to know
 
@@ -80,34 +82,10 @@ Stages 3 and 4 run models on your own laptop. Apple silicon or a GPU with 16 GB+
 
 ```bash
 node --test test/setup.test.mjs   # unit and integration tests, no network or keys needed
+node --test test/bench.test.mjs   # the benchmark report, usage parser and setup list, no network needed
 test/sandbox.sh                   # full runs in clean Docker containers (Node 22 and 24; Node 18 and 20 must be rejected)
-```
-
-## Demo app
-
-`demo/` holds a finished Prompt Pantry that meets every task in `starter/specs/roadmap.md`. Use it to see the end result, or to compare against what each AI setup produces. Do not copy it into your own project before a run, because that would defeat the comparison.
-
-```bash
-cd demo
-npm install
-npm run dev     # http://localhost:5173
-npm test        # 10 tests across the three phases
 ```
 
 ## Credits
 
-This repository is based on the course materials for [*AI Coding Workflows: From Cloud to Local*](https://www.deeplearning.ai/) by DeepLearning.AI, built in partnership with JetBrains. The original files are at [https-deeplearning-ai/sc-ai-coding-workflows-files](https://github.com/https-deeplearning-ai/sc-ai-coding-workflows-files).
-
-What came from the course:
-
-- The workshop structure: building the same app across cloud, hybrid and local setups and comparing the results
-- The spec format (`mission.md`, `tech-stack.md`, `roadmap.md`) and the phase-by-phase roadmap
-- The prompt patterns in `prompts.md`, including the subagent and local-implementer prompts
-
-What changed for this workshop:
-
-- The app is Prompt Pantry, a React + TypeScript app, in place of the course's Python app
-- The specs, prompts and harness notes target Claude Code, the DeepSeek harness and OpenRouter
-- `demo/` is new
-
-All credit for the original course design goes to its authors. The upstream repository does not state a license, so contact DeepLearning.AI before reusing the course material beyond this workshop.
+This repository began from the course materials for [*AI Coding Workflows: From Cloud to Local*](https://www.deeplearning.ai/) by DeepLearning.AI, built in partnership with JetBrains (original files: [https-deeplearning-ai/sc-ai-coding-workflows-files](https://github.com/https-deeplearning-ai/sc-ai-coding-workflows-files)). The course-derived app specs, prompts and demo app have been removed. What remains was written for this workshop: the benchmark, the model ladder, the setup script and the harness notes. The upstream repository does not state a license, so contact DeepLearning.AI before reusing any of its material.

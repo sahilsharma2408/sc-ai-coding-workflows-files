@@ -110,7 +110,7 @@ async function prepare(task, dir) {
 async function regressionSuite(task) {
   const gen = await hook(task, 'regression.mjs')
   if (!gen) return { include: ['tests/behavior/**/*.spec.{ts,tsx}', 'tests/static/**/*.spec.{ts,tsx}'], setup: undefined }
-  const out = path.join(LAB, '.gen', task.id)
+  const out = path.join(LAB, '.gen', `${task.id}-${process.pid}`) // one folder per scoring process, so parallel scores cannot delete each other's files
   fs.rmSync(out, { recursive: true, force: true })
   fs.cpSync(path.join(BENCH, 'tests'), path.join(out, 'tests'), { recursive: true })
   await gen.generate(path.join(out, 'tests'))
@@ -126,7 +126,7 @@ function changedFiles(before, after) {
   for (const f of a.keys()) if (!b.has(f)) changed.push(f)
   return { changed, before: a, after: b }
 }
-const isTestPath = (f) => /\.(test|spec)\.[tj]sx?$/.test(f) || /(^|\/)(test|tests|__tests__)\//.test(f) || f === 'TASK.md' || f === 'review.json'
+const isTestPath = (f) => /\.(test|spec)\.[tj]sx?$/.test(f) || /(^|\/)(test|tests|__tests__)\//.test(f) || f === 'TASK.md' || f === 'MISSION.md' || f === 'review.json'
 const countTests = (files) => [...files].reduce((n, [f, buf]) => n + (/\.test\.[tj]sx?$/.test(f) ? (buf.toString().match(/\b(it|test)\s*\(/g) ?? []).length : 0), 0)
 
 async function scoreTask(task, workdir, name, { regression: doRegression = true } = {}) {
@@ -294,4 +294,4 @@ if (command === 'list') {
 } else {
   console.log('commands: list | prepare <task> <dir> | score <task> <dir> | validate [task...] | matrix <report...> | pivot')
 }
-fs.rmSync(path.join(WORK, '_json'), { recursive: true, force: true })
+try { fs.rmdirSync(path.join(WORK, '_json')) } catch { /* another scoring process is still using it */ }
